@@ -1,22 +1,26 @@
 # Reference sources (authoritative, in priority order)
 
-| Topic                                      | URL                                                                        | Notes                                                                               |
-| ------------------------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Microsoft Agent Framework docs             | https://learn.microsoft.com/en-us/agent-framework/                         | Official docs. Start here.                                                          |
-| Microsoft Agent Framework repo             | https://github.com/microsoft/agent-framework                               | Check python/CHANGELOG.md before using any API.                                     |
-| Microsoft Agent Framework Python changelog | https://github.com/microsoft/agent-framework/blob/main/python/CHANGELOG.md | The framework is in beta and APIs change. Check this before using any API.          |
-| Azure AI Foundry / Azure OpenAI            | https://learn.microsoft.com/azure/ai-foundry/                              | Navigate to the Azure OpenAI pages from here.                                       |
-| Microsoft Graph                            | https://learn.microsoft.com/en-us/graph/                                   | Mark all Graph code UNVERIFIED (no live access in Phase 1).                         |
-| Ollama docs                                | https://docs.ollama.com                                                    | Used for the local fallback model.                                                  |
-| Ollama repo                                | https://github.com/ollama/ollama                                           |                                                                                     |
-| Ollama Python client                       | https://github.com/ollama/ollama-python                                    |                                                                                     |
-| Claude Code settings                       | https://docs.claude.com/en/docs/claude-code/settings                       |                                                                                     |
-| Taste skill (UI quality)                   | https://github.com/Leonxlnx/taste-skill                                    | Reference only. Pinned release or commit reviewed: TBD.                             |
-| Graphify (context management)              | https://github.com/safishamsi/graphify                                     | Reference only. PyPI package is graphifyy (double y). Pinned version reviewed: TBD. |
+| Topic                                 | URL                                                                        | Pinned version / notes                                                                            |
+| ------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Microsoft Agent Framework docs        | https://learn.microsoft.com/en-us/agent-framework/                         | Start here.                                                                                       |
+| Microsoft Agent Framework repo        | https://github.com/microsoft/agent-framework                               | agent-framework 1.22.0, agent-framework-openai 1.17.0, agent-framework-ollama 1.0.0b261015 (beta) |
+| Agent Framework Foundry client (PyPI) | https://pypi.org/project/agent-framework-foundry/                          | agent-framework-foundry 1.15.0                                                                    |
+| Azure Identity (PyPI)                 | https://pypi.org/project/azure-identity/                                   | azure-identity 1.26.0                                                                             |
+| Agent Framework Python changelog      | https://github.com/microsoft/agent-framework/blob/main/python/CHANGELOG.md | Read the raw file. Focus on entries for the packages we use.                                      |
+| Azure AI Foundry / Azure OpenAI       | https://learn.microsoft.com/en-us/azure/foundry/                           | Old URL redirects here.                                                                           |
+| Microsoft Graph                       | https://learn.microsoft.com/en-us/graph/                                   | msgraph-sdk 1.64.0. All Graph code UNVERIFIED.                                                    |
+| Ollama docs                           | https://docs.ollama.com                                                    |                                                                                                   |
+| Ollama repo                           | https://github.com/ollama/ollama                                           |                                                                                                   |
+| Ollama Python client                  | https://github.com/ollama/ollama-python                                    | ollama 0.6.3. Use the raw README for verbatim snippets.                                           |
+| Claude Code settings                  | https://code.claude.com/docs/en/settings                                   | Old docs.claude.com URL redirects here.                                                           |
+| Taste skill (UI quality)              | https://github.com/Leonxlnx/taste-skill                                    | v2.0.0, commit f624f37. Reference only.                                                           |
+| Graphify (context management)         | https://github.com/Graphify-Labs/graphify                                  | graphifyy 0.9.91 (PyPI, double y). No GitHub releases. Reference only.                            |
 
 Rules:
 
-- All URLs above were confirmed to resolve by the project owner.
 - Official docs win over blogs, samples and forums.
 - If a page cannot be fetched, report it and stop on that item. Do not substitute memory.
 - Record the date each source was read.
+- Pin exact versions (no ranges). Do not upgrade without a reason recorded in decisions.md.
+
+Install note: do not install the agent-framework meta-package. It pulls in agent-framework-ollama, which requires ollama<0.5.4. Install the exact set: agent-framework-core 1.22.0, agent-framework-foundry 1.15.0, agent-framework-openai 1.17.0, azure-identity 1.26.0, ollama 0.6.3, msgraph-sdk 1.64.0.

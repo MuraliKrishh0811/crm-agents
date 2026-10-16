@@ -15,3 +15,4 @@ In Phase 1, write the permission needs into docs/first_day_with_access.md as "to
 D8 DEFERRED: hosting is out of scope for Phase 1.
 AUTHORITY: REQUIREMENTS.md is the source of truth. inputs/crm_scheduling_agents_project_description.txt is background only. If they differ, follow REQUIREMENTS.md.
 ARCHITECTURE: docs/architecture/eraser-code.txt is the authoritative source. architecture.png is a rendered copy for human readers only.
+D9 Orchestration: plain Python orchestrator behind an Orchestrator interface for Phase 1. Revisit Agent Framework Workflows once live access exists (record the outcome). Reason: fixed pipeline with a human approval gate, easier to test, and the framework's workflow and Ollama packages are beta.
