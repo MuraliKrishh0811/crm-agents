@@ -1,6 +1,6 @@
 # Project decisions
 
-REQUIREMENTS.md is the source of truth. Where this file differs, REQUIREMENTS.md prevails.
+REQUIREMENTS.md is authoritative. This file records owner decisions and resolutions where REQUIREMENTS.md is silent. A decision that changes a rule must also be written into REQUIREMENTS.md by the owner. If the two still differ, REQUIREMENTS.md prevails and the difference is reported.
 
 ## Build decisions
 
@@ -56,6 +56,12 @@ REQUIREMENTS.md is the source of truth. Where this file differs, REQUIREMENTS.md
 - OQ-31 After a re-check conflict, approval progress returns to not_started. The approver approves a fresh option or rejects.
 - OQ-32 Fresh options replace the proposed slots. The earlier ones are kept in an audit entry. State reasons are read from audit entries. superseded_by links to the newer request.
 - OQ-33 The token header is X-CRM-Token, fetched from GET /session.
+- OQ-34 Clarification requests are scheduling requests with outcome request_clarification. A newer email in the same thread that offers concrete times supersedes it (OQ-16). After 3c, T01's request is still pending; the scenario trigger requests (A05, T03, W06) are asserted by trigger email, and 3d.4 supersedes T01's request. An ambiguous sender time zone also produces request_clarification (FR-SCH-3).
+- OQ-35 Test reports (TR-8 accuracy, TR-3 scores) go to reports/ (git-ignored). Baselines are copied to tests/baselines/ only when the owner decides. Review and resume prompts may run pytest and write only to reports/ and temp directories.
+- OQ-36 Approve may carry an optional edited draft reply body. Orchestrator.approve accepts it, records the edit as an audit entry (OQ-4) and sends the approved text. Tested in 3e and 4d.
+- OQ-37 The mock calendar window is end exclusive. Availability at or after 2026-10-31T00:00 is unknown (OQ-15).
+- OQ-38 Orchestrator.approve exists from 3e and is unit-tested there. The smoke-test approval assertions become real at 3f.5.
+- ENV LOADER is now amended into REQUIREMENTS R7. The application's own loader may read .env while it holds no real secrets.
 
 ## Additional rules
 
@@ -65,6 +71,9 @@ REQUIREMENTS.md is the source of truth. Where this file differs, REQUIREMENTS.md
 - Test runner: pytest is approved. Its exact version is proposed from PyPI with its release date, spot-checked by the owner, and only then pinned in inputs/references.md. Approved in principle, each to be pinned at the start of the slice that needs it with the same propose-then-check step: pydantic (Slice 2), FastAPI and uvicorn (Slice 4), React, Vite, TypeScript and Playwright (Slice 4). Any other dependency needs a question first.
 - Commits: the owner makes all commits (the docs-only commit is tagged docs-baseline). At each commit point Claude shows git status, proposes a message and waits.
 - Dataset check (Slice 0): generate.py is run on a copy. calendars/mock_calendars.json, config/team.json and expected/expected_outcomes.json are compared byte for byte. The .eml files are compared by parsed headers, bodies and attachments, because Python's email library picks random multipart boundaries. The dataset is never changed.
+- SLICE 0 ONLY: the owner runs the .env key-name check and pastes the output, so Claude executes nothing that reads .env during Slice 0. From Slice 1 on, the amended R7 applies: the application's own settings loader may read .env while it holds no real secrets.
 - Any question not listed here is resolved when the slice that needs it starts, and then recorded in this file.
 
 TR-3 scorer (Phase 1): two layers. Gating: deterministic checks that every date, name, number and company in a generated summary or draft appears in the source emails or CRM record, and that required facts are present. Must pass. Advisory: rubric score (accuracy, completeness, tone, actionability, 1-5) from the local model; record a baseline on the first run and report regressions; never gates a slice. The owner reads a sample of drafts before demos. Revisit with a stronger judge model once live access exists.
+
+ENV LOADER (Phase 1): tests and smoke runs that Claude executes may use the application's settings loader on .env, because .env contains no secrets in Phase 1. Claude still never opens, prints or searches .env itself. The loader and all logging must never print configuration values, only key names and set/blank status. Settings objects must redact values in their string form. Revisit before any real secret (keys, tokens, passwords) is placed anywhere in this project; at that point use managed identity or inline environment variables instead.

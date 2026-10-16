@@ -9,8 +9,8 @@ description: Ollama as the local fallback model for CRM Agents - llama3.1:8b on 
 
 - **Everything is real.** The local provider calls a real Ollama server and a real model. No mocking, stubs, canned or hardcoded model responses, no hardcoded snippets standing in for behavior.
 - **Ollama is the local fallback** and the working model path in Phase 1 (R3). Live Foundry/Azure OpenAI is the later path (`crm-agent-framework-azure-openai`).
-- **Never read `.env`.** Use `example.env` only.
-- **`REQUIREMENTS.md` is authoritative** (sections 11, 13). Only `inputs/decisions.md` can override it.
+- **`.env` (R7):** Claude never opens, prints, searches or copies a `.env*` file; use `example.env` only. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1, no real secrets); it never prints values.
+- **`REQUIREMENTS.md` is authoritative** (sections 11, 13). `inputs/decisions.md` records owner decisions where it is silent.
 
 ## Decisions (D5, confirmed)
 
@@ -51,11 +51,11 @@ By default models unload after 5 minutes (docs). So:
 
 ## Accuracy reporting (TR-8)
 
-Each run records stage-classification accuracy against `data/synthetic/expected/expected_outcomes.json`, with the model name and `num_ctx` in the report, so `llama3.1:8b` vs `qwen3:8b` is judged on evidence. Only tests read the answer key (R8). TODO before testing `qwen3:8b`: check how its thinking mode interacts with `format` (the pinned `chat()` has a `think` parameter; behavior not yet verified).
+Each run records stage-classification accuracy against `data/synthetic/expected/expected_outcomes.json`, with the model name and `num_ctx` in the report, written to `reports/` (git-ignored; baselines are copied to `tests/baselines/` only when the owner decides, decisions.md OQ-35), so `llama3.1:8b` vs `qwen3:8b` is judged on evidence. Only tests read the answer key (R8). TODO before testing `qwen3:8b`: check how its thinking mode interacts with `format` (the pinned `chat()` has a `think` parameter; behavior not yet verified).
 
 ## Config keys
 
-All in `example.env` (added 2026-10-16): `MODEL_PROVIDER=ollama`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_NUM_CTX`, `OLLAMA_KEEP_ALIVE`, `OLLAMA_TEMPERATURE` (`0`), `OLLAMA_MAX_RETRIES`, `OLLAMA_REQUEST_TIMEOUT_S`, `OLLAMA_WARMUP_ON_START` (`true`). Values for `OLLAMA_NUM_CTX`, `OLLAMA_KEEP_ALIVE`, `OLLAMA_MAX_RETRIES` and `OLLAMA_REQUEST_TIMEOUT_S` are intentionally blank until tuned on the MacBook Air M4 (check `ollama ps`); the code must fail clearly on a missing required value rather than silently invent one. See `crm-security-env`.
+All in `example.env` (added 2026-10-16): `MODEL_PROVIDER=ollama`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_NUM_CTX`, `OLLAMA_KEEP_ALIVE`, `OLLAMA_TEMPERATURE` (`0`), `OLLAMA_MAX_RETRIES`, `OLLAMA_REQUEST_TIMEOUT_S`, `OLLAMA_WARMUP_ON_START` (`true`). `example.env` holds starting values: `OLLAMA_BASE_URL=http://localhost:11434`, `OLLAMA_MODEL=llama3.1:8b`, `OLLAMA_NUM_CTX=4096`, `OLLAMA_KEEP_ALIVE=30m`, `OLLAMA_TEMPERATURE=0`, `OLLAMA_MAX_RETRIES=2`, `OLLAMA_REQUEST_TIMEOUT_S=120`, `OLLAMA_WARMUP_ON_START=true`. They are tuned on the MacBook Air M4 (check `ollama ps`; Slice 0 records the cold and warm timings); the code must fail clearly on a missing required value rather than silently invent one. See `crm-security-env`.
 
 ## Sources (read 2026-10-15)
 

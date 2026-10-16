@@ -9,8 +9,8 @@ description: Microsoft Graph integration for the live MailProvider and CalendarP
 
 - **Everything is real.** Graph adapters are real implementations written from current docs. No mocking, stubs, canned or hardcoded responses, no hardcoded snippets standing in for behavior.
 - **Ollama is the local fallback.** Phase 1 runs on `.eml` files, mock calendar JSON and Ollama; Graph is off by default and refuses to start without configuration (R3).
-- **Never read `.env`.** Use `example.env` only.
-- **`REQUIREMENTS.md` is authoritative** (section 12). Only `inputs/decisions.md` can override it.
+- **`.env` (R7):** Claude never opens, prints, searches or copies a `.env*` file; use `example.env` only. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1, no real secrets); it never prints values.
+- **`REQUIREMENTS.md` is authoritative** (section 12). `inputs/decisions.md` records owner decisions where it is silent.
 
 ## Status: UNVERIFIED
 

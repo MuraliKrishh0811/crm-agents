@@ -13,7 +13,7 @@ This first version runs entirely on practice data. It is **not connected to Micr
 | Part | In this demo | Later, with access |
 |---|---|---|
 | Emails | 32 practice emails saved as files, played back one at a time as if they were arriving | Our real inbox |
-| Calendars | Practice calendars for four colleagues, covering 19 to 30 October 2026 | Real calendars |
+| Calendars | Practice calendars for four colleagues, covering 19 to 30 October 2026 (the window ends at the start of 31 October) | Real calendars |
 | The AI | A smaller AI model running on one laptop (it reads and writes text) | A larger online AI service |
 | Customer records | A simple database on the laptop | A company database (not chosen yet) |
 | Meeting video link | A **made-up link, clearly marked "simulated"** | A real Teams link |

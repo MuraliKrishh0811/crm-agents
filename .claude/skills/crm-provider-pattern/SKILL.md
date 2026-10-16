@@ -9,8 +9,8 @@ description: The provider pattern for CRM Agents - the four interfaces (MailProv
 
 - **Everything is real.** Agents, Graph calls and provider adapters are real implementations. No mocking, stubs, canned or hardcoded responses, no hardcoded snippets standing in for behavior.
 - **Ollama is the local fallback.** Local mode (Ollama, `.eml` files, mock calendar JSON, SQLite) is the working system in Phase 1 and the default.
-- **Never read `.env`.** Use `example.env` only.
-- **`REQUIREMENTS.md` is authoritative** (sections 6, 11 and 12 govern this skill). Only `inputs/decisions.md` can override it.
+- **`.env` (R7):** Claude never opens, prints, searches or copies a `.env*` file; use `example.env` only. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1, no real secrets); it never prints values.
+- **`REQUIREMENTS.md` is authoritative** (sections 6, 11 and 12 govern this skill). `inputs/decisions.md` records owner decisions where it is silent.
 
 ## Rule
 
@@ -40,7 +40,7 @@ CrmRepository:     customers, contacts, emails, engagements, meetings, stage_his
 | Interface | Local (working, Phase 1) | Live (written from docs, UNVERIFIED, off by default) |
 |---|---|---|
 | MailProvider | Parses `.eml` (Message-ID, In-Reply-To, References, Date with offset, From/To/Cc, multipart, attachments); replays in date order against the simulated clock | Microsoft Graph (`crm-graph-integration`) |
-| CalendarProvider | Reads mock calendar JSON (Graph event shape, `showAs` values) including each user's `workingHours`; **also persists meetings the system creates** so later availability sees them; `find_events` reads `attendees` and event keys from the mock JSON and **merges the SQLite overlay** (OQ-22), returning one event per event key (the same meeting sits on several calendars) | Microsoft Graph (working hours returned per user by Graph, UNVERIFIED). `get_availability` returns `working_hours` next to `busy_blocks` (REQUIREMENTS section 6; decisions.md OQ-28); a user without them gets the default 08:00-17:00 Mon-Fri `America/Chicago`. Outside the mock window the availability is unknown and not offerable (OQ-15). Local updates to events that came from the mock JSON go to a writable SQLite overlay merged over the read-only JSON (OQ-22). Live `find_events`: Graph `calendarView` per user (event `attendees` and `iCalUId`), UNVERIFIED (`crm-graph-integration`) |
+| CalendarProvider | Reads mock calendar JSON (Graph event shape, `showAs` values) including each user's `workingHours`; **also persists meetings the system creates** so later availability sees them; `find_events` reads `attendees` and event keys from the mock JSON and **merges the SQLite overlay** (OQ-22), returning one event per event key (the same meeting sits on several calendars) | Microsoft Graph (working hours returned per user by Graph, UNVERIFIED). `get_availability` returns `working_hours` next to `busy_blocks` (REQUIREMENTS section 6; decisions.md OQ-28); a user without them gets the default 08:00-17:00 Mon-Fri `America/Chicago`. Outside the mock window (end exclusive, OQ-37) the availability is unknown and not offerable (OQ-15). Local updates to events that came from the mock JSON go to a writable SQLite overlay merged over the read-only JSON (OQ-22). Live `find_events`: Graph `calendarView` per user (event `attendees` and `iCalUId`), UNVERIFIED (`crm-graph-integration`) |
 | ChatModelProvider | Ollama `llama3.1:8b` (`crm-ollama-local-model`) | Foundry project endpoint or Azure OpenAI resource endpoint via Agent Framework (`crm-agent-framework-azure-openai`) |
 | CrmRepository | SQLite | Azure SQL or Dataverse (undecided, D3 defers); stays behind the interface |
 

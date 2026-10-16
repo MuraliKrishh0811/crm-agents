@@ -9,8 +9,8 @@ description: Deterministic scheduling and time zone rules for CRM Agents - IANA 
 
 - **Everything is real.** The scheduler, calendar providers and model calls are real implementations. No mocking, stubs, canned or hardcoded responses, no hardcoded snippets or slots standing in for behavior.
 - **Ollama is the local fallback** and only extracts or drafts text here (`crm-ollama-local-model`); all scheduling math is plain code.
-- **Never read `.env`.** Use `example.env` only.
-- **`REQUIREMENTS.md` is authoritative** (sections 7, 8, 10). Only `inputs/decisions.md` can override it.
+- **`.env` (R7):** Claude never opens, prints, searches or copies a `.env*` file; use `example.env` only. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1, no real secrets); it never prints values.
+- **`REQUIREMENTS.md` is authoritative** (sections 7, 8, 10). `inputs/decisions.md` records owner decisions where it is silent.
 
 ## Split of work (R4)
 
@@ -23,7 +23,7 @@ Have the model draft prose around placeholders and let code fill slot times in t
 ## Time rules (R9)
 
 - Store UTC plus the relevant IANA zone (for example `Europe/London`, `America/Chicago`). **Never** convert between regions with a fixed UTC offset; DST dates differ (UK ends Oct 25 2026, US Nov 1 2026, so London-Chicago is 6 hours before Oct 25 and 5 hours after).
-- Zone abbreviations in email text (BST, GMT, MDT) are hints, not authority. **The sender's zone is determined in this order (FR-SCH-2; decisions.md OQ-7):** the contact's stored zone; else an explicit zone in the email text; else candidate zones implied by the `Date` header offset plus hints in the text, **validated in code**. If it is still ambiguous, ask the customer to confirm instead of guessing.
+- Zone abbreviations in email text (BST, GMT, MDT) are hints, not authority. **The sender's zone is determined in this order (FR-SCH-2; decisions.md OQ-7):** the contact's stored zone; else an explicit zone in the email text; else candidate zones implied by the `Date` header offset plus hints in the text, **validated in code**. If it is still ambiguous, ask the customer to confirm instead of guessing: the outcome is `request_clarification` asking for the zone, with no slots and no meeting (FR-SCH-3, decisions.md OQ-34).
 - Use the language's IANA zone database. TODO: Python `zoneinfo` usage and the need for the `tzdata` package are not in `inputs/references.md`; verify against official Python docs before writing, and do not write conversion code from memory.
 - The simulated clock for the dataset is `2026-10-16T10:00:00` in `America/Chicago`. In `example.env` it is `SIMULATED_NOW=2026-10-16T10:00:00` (naive local time) plus `SIMULATED_TZ=America/Chicago`; combine them with the IANA zone, never with a hardcoded offset. Per `inputs/decisions.md` (OQ-5), `SIMULATED_NOW` and `SIMULATED_TZ` in the environment override `organization.simulationNow` in `config/team.json`. The clock decides which emails have arrived and which offered times are already in the past; it is **not** the reference for relative dates (those use the email's sent date, FR-SCH-2). "Now" is always injected from config, never read from the system clock in scheduling code.
 
@@ -31,12 +31,12 @@ Have the model draft prose around placeholders and let code fill slot times in t
 
 **Policy from `config/team.json`:** organization zone `America/Chicago`; 30-minute granularity; default durations (intro 30, discovery 30, demo 60, walkthrough 60, kickoff 60); hard-blocking `busy`, `oof`; soft-blocking `tentative` (lower-ranked fallback, always shown with a warning, never silently ignored); non-blocking `free`, `workingElsewhere`; max 3 suggestions; approval always required. Read these at runtime.
 
-**Working hours come from the `CalendarProvider`, per user** (REQUIREMENTS section 8, `inputs/decisions.md` OQ-6): local mode reads `workingHours` from `mock_calendars.json`; live mode would take them from Graph (UNVERIFIED). If a user has none, default to 08:00-17:00 Mon-Fri `America/Chicago`. `team.json` has no working-hour values. `get_availability` returns them per user next to the busy blocks: `{working_hours, busy_blocks: [{start, end, showAs}]}` (REQUIREMENTS section 6; decisions.md OQ-28). Availability outside the mock calendar window (2026-10-19 to 2026-10-31) is unknown and not offerable, reason "no calendar data" (OQ-15).
+**Working hours come from the `CalendarProvider`, per user** (REQUIREMENTS section 8, `inputs/decisions.md` OQ-6): local mode reads `workingHours` from `mock_calendars.json`; live mode would take them from Graph (UNVERIFIED). If a user has none, default to 08:00-17:00 Mon-Fri `America/Chicago`. `team.json` has no working-hour values. `get_availability` returns them per user next to the busy blocks: `{working_hours, busy_blocks: [{start, end, showAs}]}` (REQUIREMENTS section 6; decisions.md OQ-28). Availability outside the mock calendar window is unknown and not offerable, reason "no calendar data" (OQ-15). The window is read from the JSON (`2026-10-19T00:00` to `2026-10-31T00:00` America/Chicago) and is **end exclusive** (OQ-37): at or after 2026-10-31T00:00 is unknown.
 
 ## Algorithm outline
 
 1. Detect intent in the **new** text only; never trigger from historical times in quoted or old emails (FR-SCH-1, FR-SCH-2). The Scheduler extracts the windows itself; the Ingestion Agent only passes on the cleaned new-email text (decisions.md OQ-11). Resolve relative dates against the email's sent date in the sender's zone and discard windows already in the past by the simulated clock.
-2. No concrete times: outcome `request_clarification`, draft the question, create nothing (FR-SCH-3).
+2. No concrete times, or a sender zone that is still ambiguous: outcome `request_clarification` (a scheduling request, OQ-34), draft the question, create no meeting (FR-SCH-3). A clarification request stays `pending` until a newer email in the same thread offers concrete times and supersedes it (OQ-16).
 3. Select attendees from assignment rules; add CC'd customer contacts as external attendees (FR-SCH-4). **Only assigned attendees block** (FR-SCH-10).
 4. Convert each window to UTC; cap open-ended windows by each attendee's working hours (from the `CalendarProvider`); read availability through `CalendarProvider`; apply blocking rules (FR-SCH-5, FR-SCH-6).
 5. Intersect in code, split into granularity slots of the meeting duration, rank, keep at most 3. Fallback slots with tentative attendees rank lowest and carry a warning.

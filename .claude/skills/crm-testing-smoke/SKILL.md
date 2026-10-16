@@ -9,8 +9,8 @@ description: Testing and smoke-testing plan for CRM Agents - tests/ structure (a
 
 - **Everything is real.** Tests exercise real agents, real providers (local Ollama, `.eml` replay, mock calendar JSON, SQLite) and real API calls. No mocking, stubs, canned or hardcoded responses to make a test pass (R1).
 - **Ollama is the local fallback** and is the real model in tests; start it and warm it up first.
-- **Never read `.env`.** Use `example.env` only; tests never print settings.
-- **`REQUIREMENTS.md` is authoritative** (section 13). Only `inputs/decisions.md` can override it.
+- **`.env` (R7):** Claude never opens, prints, searches or copies a `.env*` file; use `example.env` only. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1, no real secrets); it never prints values; tests never print settings.
+- **`REQUIREMENTS.md` is authoritative** (section 13). `inputs/decisions.md` records owner decisions where it is silent.
 
 ## Commit gate
 
@@ -34,7 +34,7 @@ Suggested files (finalize in each slice's plan): `agents/test_stage_exact.py` (T
 |---|---|---|
 | TR-1 | Stage after every email, customer matching, duplicate F08b ignored, noise ignored, vague Tailspin email gets a clarification | Exact match against `data/synthetic/expected/expected_outcomes.json` |
 | TR-2 | SCH-ADV, SCH-TAIL, SCH-WING outcome type and slots, incl. DST trap and non-blocking `free` event; **the reschedule lookup (FR-SCH-9, D11)**: W06 one match, several matches narrowed by day, several unresolved, no match (clarification, never a duplicate) | Exact match against the key and section 10; lookup cases built by the test (temporary calendar copy or the provider's `create_event`), never by editing the dataset |
-| TR-3 | Summaries and drafted replies (no single right answer) | **Two layers (decisions.md, TR-3 scorer):** *gating*, deterministic checks that every date, name, number and company in a generated summary or draft appears in the source emails or CRM record and that required facts are present (must pass); *advisory*, a rubric score (accuracy, completeness, tone, actionability, 1 to 5) from the local model with a baseline recorded on the first run and regressions reported (never gates a slice). Rubric files in `tests/agents/rubrics/`; baselines in `tests/agents/baselines/`. The owner reads a sample of drafts before demos. llama3.1:8b as its own judge is weak; revisit with a stronger judge once live access exists |
+| TR-3 | Summaries and drafted replies (no single right answer) | **Two layers (decisions.md, TR-3 scorer):** *gating*, deterministic checks that every date, name, number and company in a generated summary or draft appears in the source emails or CRM record and that required facts are present (must pass); *advisory*, a rubric score (accuracy, completeness, tone, actionability, 1 to 5) from the local model with a baseline recorded on the first run and regressions reported (never gates a slice). Rubric files in `tests/agents/rubrics/`; scores and the first-run baseline are written to `reports/` (git-ignored) and copied to `tests/baselines/` only when the owner decides (decisions.md OQ-35). The owner reads a sample of drafts before demos. llama3.1:8b as its own judge is weak; revisit with a stronger judge once live access exists |
 | TR-4 | Every CRM API endpoint | A `curl` command and a scripted equivalent per endpoint, run against the running local system |
 | TR-5 | Pipeline view, customer timeline, scheduling panel, approve/edit/reject | **Playwright** scripts. TODO: Playwright is not in `inputs/references.md`; verify against its official docs before writing, no snippets from memory |
 | TR-6 | Idempotency | Replay the full email set twice: CRM state identical. **And** approve the same request twice: no duplicates (section 13 TR-6 now says both) |
@@ -50,7 +50,7 @@ Rules: tests may read the answer key, production code must not (R8). Add a guard
 
 ## Smoke test (TR-9), run after every slice
 
-**Staged (decisions.md):** from Slice 1 on there is **one** smoke test, `tests/smoke/test_smoke.py`, covering everything built so far. An assertion that cannot exist yet appears as an explicit `not yet implemented (Slice N)` skip that shows in the output (`pytest -rs`), **never a silent pass**. It is complete, with no skips, at Slice 4d, where part (b) goes through the real approval endpoint. Before Slice 4d, approval in part (b) goes through `Orchestrator.approve` (the handler itself, never a direct repository or provider call).
+**Staged (decisions.md):** from Slice 1 on there is **one** smoke test, `tests/smoke/test_smoke.py`, covering everything built so far. An assertion that cannot exist yet appears as an explicit `not yet implemented (Slice N)` skip that shows in the output (`pytest -rs`), **never a silent pass**. It is complete, with no skips, at Slice 4d, where part (b) goes through the real approval endpoint. Before Slice 4d, approval in part (b) goes through `Orchestrator.approve` (the handler itself, never a direct repository or provider call). `Orchestrator.approve` exists and is unit-tested from 3e; the smoke approval assertions become real at 3f.5 (OQ-38). Approve may carry an optional edited draft body, recorded as an audit entry and sent as the approved text (OQ-36); test it in 3e and 4d.
 
 Section 10 defines "final stage" as the state **after replaying all emails and before any human approval**. Approval is a separate action, so the smoke test has two parts that run in order against one system instance.
 
@@ -64,7 +64,7 @@ Section 10 defines "final stage" as the state **after replaying all emails and b
 
 3. Replay all emails against the simulated clock `2026-10-16T10:00:00` `America/Chicago`.
 4. Assert each customer's final stage from section 10 and the key: Fabrikam Converted, Northwind Not Converted, Adventure Works Engagement, Tailspin Toys Engagement, Wingtip Toys Presentation/Follow-up.
-5. Assert a **pending** scheduling request (state `pending`, FR-SCH-12) exists for Adventure Works (`recommend_slots`), Tailspin (`counter_propose`) and Wingtip (`update_existing_meeting`), with the expected slots and reasons (TR-2). A request replaced by a newer email is `superseded` and kept for audit; it is not pending.
+5. Assert a **pending** scheduling request (state `pending`, FR-SCH-12) exists **by trigger email** (decisions.md OQ-34): A05 Adventure Works (`recommend_slots`), T03 Tailspin (`counter_propose`) and W06 Wingtip (`update_existing_meeting`), with the expected slots and reasons (TR-2). T01's `request_clarification` request is still pending after Slice 3c and is `superseded` (kept for audit, not pending) from 3d.4 on, so from 3d.4 exactly three requests are pending.
 6. Assert nothing approval-gated happened (R5): no meeting created, the Wingtip event `wingtip-walkthrough-20261022` unchanged, no draft sent without an approval record.
 
 **Part (b): explicit approval through the real approval endpoint** (the CRM API's approval route, FR-API-1 and FR-APP-2; never a direct repository or provider call)

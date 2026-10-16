@@ -1,6 +1,6 @@
 ---
 name: crm-core-rules
-description: Core rules for the CRM Agents project (R1-R12 from REQUIREMENTS.md), the confirmed decisions D1-D10, and the working method (plan first, small slices, tests, commit gate). Use at the start of any planning, coding, review or commit in this repo, and whenever instructions seem to conflict or something is ambiguous.
+description: Core rules for the CRM Agents project (R1-R12 from REQUIREMENTS.md), the confirmed decisions D1-D11, and the working method (plan first, small slices, tests, commit gate). Use at the start of any planning, coding, review or commit in this repo, and whenever instructions seem to conflict or something is ambiguous.
 ---
 
 # CRM Agents: core rules
@@ -9,13 +9,13 @@ description: Core rules for the CRM Agents project (R1-R12 from REQUIREMENTS.md)
 
 - **Everything is real.** Agents, Graph calls, provider adapters and model calls are real implementations. No mocking, stubs, canned or hardcoded responses, and no hardcoded snippets standing in for behavior (R1, R8).
 - **Ollama is the local fallback.** Local mode (Ollama + `.eml` files + mock calendar JSON + SQLite) is the working system in Phase 1 and the default (R3).
-- **Never read `.env`.** Use `example.env` only. `.claude/settings.json` denies `Read(./.env)` and `Read(./.env.*)`.
-- **`REQUIREMENTS.md` is authoritative.** Only `inputs/decisions.md` can override it. Do not edit `REQUIREMENTS.md`; propose changes to the user.
+- **`.env` (R7):** Claude never opens, prints, searches or copies a `.env*` file; use `example.env` only. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1, no real secrets); it never prints values. `.claude/settings.json` denies `Read(./.env)` and `Read(./.env.*)`.
+- **`REQUIREMENTS.md` is authoritative.** `inputs/decisions.md` records owner decisions where it is silent. Do not edit `REQUIREMENTS.md`; propose changes to the user.
 
 ## Source of truth, in order
 
 1. `REQUIREMENTS.md`
-2. `inputs/decisions.md` (confirmed decisions)
+2. `inputs/decisions.md` (owner decisions where `REQUIREMENTS.md` is silent; if the two differ, `REQUIREMENTS.md` prevails and the difference is reported)
 3. `docs/architecture/eraser-code.txt` (authoritative; `decisions.md` says no rendered image is kept in the repository)
 4. `inputs/references.md` (the only allowed authority for Agent Framework, Foundry/Azure OpenAI, Ollama, Graph, taste-skill, graphify)
 5. `inputs/crm_scheduling_agents_project_description.txt` is background only.
@@ -39,7 +39,7 @@ description: Core rules for the CRM Agents project (R1-R12 from REQUIREMENTS.md)
 
 ## Confirmed decisions (`inputs/decisions.md`)
 
-Python backend (D1); React + Vite + TypeScript (D2); SQLite locally behind `CrmRepository` (D3); Claude Code (D4); Ollama `llama3.1:8b` on a MacBook Air M4 with 16 GB RAM, name kept in `OLLAMA_MODEL`, `qwen3:8b` compared later via TR-8 (D5); Teams agent after the web dashboard (D6); Graph permission set and approver deferred to IT, written as "to be confirmed" in `docs/first_day_with_access.md` and never scoped in code (D7); hosting out of Phase 1 (D8); plain Python orchestrator behind an `Orchestrator` interface for Phase 1, with Agent Framework Workflows revisited once live access exists and the outcome recorded in `decisions.md` (D9); Python 3.13, with Python 3.14 not used (D10).
+Python backend (D1); React + Vite + TypeScript (D2); SQLite locally behind `CrmRepository` (D3); Claude Code (D4); Ollama `llama3.1:8b` on a MacBook Air M4 with 16 GB RAM, name kept in `OLLAMA_MODEL`, `qwen3:8b` compared later via TR-8 (D5); Teams agent after the web dashboard (D6); Graph permission set and approver deferred to IT, written as "to be confirmed" in `docs/first_day_with_access.md` and never scoped in code (D7); hosting out of Phase 1 (D8); plain Python orchestrator behind an `Orchestrator` interface for Phase 1, with Agent Framework Workflows revisited once live access exists and the outcome recorded in `decisions.md` (D9); Python 3.13, with Python 3.14 not used (D10); `CalendarProvider.find_events(users, attendee_addresses, start, end)` added in `REQUIREMENTS.md` section 6, with the lookup rule in FR-SCH-9, and no customer names, event keys or dates from the dataset in production code (D11; the live Graph call is UNVERIFIED).
 
 ## Working method (`CLAUDE.md`)
 
@@ -55,9 +55,9 @@ Python backend (D1); React + Vite + TypeScript (D2); SQLite locally behind `CrmR
 - Scheduling outcomes, exactly one of: `recommend_slots`, `counter_propose`, `request_clarification`, `update_existing_meeting`.
 - Simulated clock for the dataset: `2026-10-16T10:00:00` in `America/Chicago`; `SIMULATED_NOW` and `SIMULATED_TZ` in the environment override `organization.simulationNow` in `config/team.json`. The clock decides which emails have arrived and which offered times are past; relative dates resolve against the email's sent date (FR-SCH-2).
 - Scheduling request states (FR-SCH-12): `pending`, `approved`, `rejected`, `superseded`, `cancelled`, `expired`, `needs_review`. Scheduling **policy** comes from `config/team.json`; **working hours** come from the `CalendarProvider` per user (default 08:00-17:00 Mon-Fri `America/Chicago`). Neither is hardcoded.
-- All design questions OQ-1 to OQ-33 and the API safety rules are resolved in `inputs/decisions.md` (its OQ numbers refer to `docs/hld.md` section 12). Anything not listed there is resolved, and then recorded in that file, when the slice that needs it starts; `docs/hld.md` section 12.2 lists what is still open and which slice needs it. Audit goes through `CrmRepository`; after approval the Orchestrator's approval handler books and sends (see `crm-provider-pattern`).
+- All design questions OQ-1 to OQ-38 and the API safety rules are resolved in `inputs/decisions.md` (its OQ numbers refer to `docs/hld.md` section 12). Anything not listed there is resolved, and then recorded in that file, when the slice that needs it starts; `docs/hld.md` section 12.2 lists what is still open and which slice needs it. Audit goes through `CrmRepository`; after approval the Orchestrator's approval handler books and sends (see `crm-provider-pattern`).
 - Approval fields (REQUIREMENTS section 9): `decision` is `approve` or `reject`; `decided_by`, `decided_at`; approval progress is `not_started`, `in_progress`, `completed` or `partially_completed`; each approval step's result is an `AgentRun` linked to the request. Editing changes only the draft text and is an audit entry. Tests TR-10 to TR-13 cover request lifecycle, approval re-check, approval failure and API safety (see `crm-testing-smoke`).
 
 ## Do not
 
-Read `.env`; use an LLM for time zone conversion or slot intersection; book or send without approval; stub or hardcode behavior; special-case dataset values; use a fixed UTC offset; modify the dataset or answer key to make tests pass; claim live Graph or Azure behavior is verified; start coding before the plan is approved.
+Open, print or search `.env` yourself (only the application's own loader may read it, R7); use an LLM for time zone conversion or slot intersection; book or send without approval; stub or hardcode behavior; special-case dataset values; use a fixed UTC offset; modify the dataset or answer key to make tests pass; claim live Graph or Azure behavior is verified; start coding before the plan is approved.

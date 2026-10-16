@@ -9,14 +9,14 @@ description: Context management for the CRM Agents repo - keeping Claude's conte
 
 - **Everything is real.** Summaries and maps describe real code; never invent files, APIs or behavior to fill a gap, and never write stub code to "keep moving".
 - **Ollama is the local fallback** (Phase 1 working system). Context notes must say which path (local or live) a fact applies to.
-- **Never read `.env`.** Use `example.env` only. Any indexing or mapping tool must exclude `.env*`, `*.pem`, `*.key` and `.venv/`.
-- **`REQUIREMENTS.md` is authoritative.** Cite its IDs instead of paraphrasing it; only `inputs/decisions.md` can override it.
+- **`.env` (R7):** Claude never opens, prints, searches or copies a `.env*` file; use `example.env` only. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1, no real secrets); it never prints values. Any indexing or mapping tool must exclude `.env*`, `*.pem`, `*.key` and `.venv/`.
+- **`REQUIREMENTS.md` is authoritative.** Cite its IDs instead of paraphrasing it; `inputs/decisions.md` records owner decisions where it is silent.
 
 ## Habits that keep context small
 
 - Read `REQUIREMENTS.md` and `inputs/decisions.md` at the start; afterwards re-read only the section or ID in question, not the whole file.
 - Refer by ID (`FR-SCH-6`, `TR-2`, `R9`) in plans, tests and commits so intent survives summarization.
-- Work in thin vertical slices (REQUIREMENTS section 16) with one plan file per slice in `plans/`; finish and commit before opening the next.
+- Work in thin vertical slices (REQUIREMENTS section 16) with one plan file per slice in `plans/`; finish the slice and propose the commit (the owner makes all commits; show `git status` and a message, then wait) before opening the next.
 - Fetch large docs to the scratchpad directory and read only the lines needed; do not paste whole pages into the conversation. Record in the skill or snippet header only: URL, version, date, status.
 - Use forked or fresh subagents for broad research or review so raw tool output stays out of the main context; hand them exact questions and paths, and verify what they report.
 - Keep this repo's skills short; long reference text lives in each skill's `snippets/` folder and is opened only when needed.

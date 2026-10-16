@@ -1,13 +1,13 @@
 # High-Level Design (HLD)
 
-Status: draft for review, updated 2026-10-16 after every design question (OQ-1 to OQ-33) was resolved in `inputs/decisions.md` ("Design decisions") and `REQUIREMENTS.md` was edited to match (sections 6, 9, 13, 17; FR-SCH-2, FR-APP-1, FR-APP-2, FR-APP-4, TR-13). Phase 1 (local only). **No application code exists yet**; this document describes the design that `REQUIREMENTS.md` calls for.
+Status: draft for review, updated 2026-10-16 after every design question (OQ-1 to OQ-38) was resolved in `inputs/decisions.md` ("Design decisions") and `REQUIREMENTS.md` was edited to match (sections 6, 9, 10, 13, 14, 15, 17; R7, FR-SCH-2, FR-SCH-3, FR-APP-1, FR-APP-2, FR-APP-4, TR-13). Phase 1 (local only). **No application code exists yet**; this document describes the design that `REQUIREMENTS.md` calls for.
 
 Authority and terms:
 
-- `REQUIREMENTS.md` is authoritative. Decisions D1-D10 and the resolved design questions come from `inputs/decisions.md`. The architecture source is `docs/architecture/eraser-code.txt` (`decisions.md` says no rendered image is kept in the repository).
+- `REQUIREMENTS.md` is authoritative; `inputs/decisions.md` records owner decisions where it is silent. Decisions D1-D11 and the resolved design questions come from `inputs/decisions.md`. The architecture source is `docs/architecture/eraser-code.txt` (`decisions.md` says no rendered image is kept in the repository).
 - Terms follow `REQUIREMENTS.md` and the project skills in `.claude/skills/`. IDs (`FR-`, `TR-`, `R`) are cited where relevant.
 - Anything about live Microsoft Graph, Entra ID or Azure OpenAI/Foundry behavior is marked **UNVERIFIED**: it is written from documentation and has never run against a service (section 18 of the requirements).
-- This document makes no new decisions. `OQ-n` numbers match `inputs/decisions.md`, which points here. All of OQ-1 to OQ-33 are resolved and shown in section 12.1; section 12.2 lists what is still open, with the slice that needs each item; section 13 records the inconsistencies found in the inputs and how they were resolved. Companion documents: [lld.md](lld.md), [api.md](api.md), [demo.md](demo.md), [first_day_with_access.md](first_day_with_access.md).
+- This document makes no new decisions. `OQ-n` numbers match `inputs/decisions.md`, which points here. All of OQ-1 to OQ-38 are resolved and shown in section 12.1; section 12.2 lists what is still open, with the slice that needs each item; section 13 records the inconsistencies found in the inputs and how they were resolved. Companion documents: [lld.md](lld.md), [api.md](api.md), [demo.md](demo.md), [first_day_with_access.md](first_day_with_access.md).
 
 ## 1. Purpose and scope
 
@@ -185,7 +185,7 @@ Switching to live is a configuration change, not a rebuild (section 3). Live cod
 | Idempotency | Emails keyed by Message-ID; meetings by iCalUId or a stable internal key (R6, OQ-9); replaying the set twice yields identical CRM state **and approving the same request twice creates no duplicates** (TR-6) |
 | Time | UTC plus IANA zone everywhere; never a fixed offset between regions (R9). Relative dates use the email's sent date in the sender's zone (FR-SCH-2); the simulated clock only discards past times and decides which emails have arrived |
 | Simulation labels | Join links and similar values marked simulated in data and UI (R10) |
-| Secrets | No `.env` reads by Claude; `example.env` lists keys; no secrets in code, logs, tests or docs (R7) |
+| Secrets | Claude never opens, prints or searches `.env`; the application's own settings loader may read it when tests or smoke runs execute while it holds no real secrets, and never prints values (R7); `example.env` lists keys; no secrets in code, logs, tests or docs |
 | Reliability | Bounded retries on model and provider calls; the pipeline continues past a failed email and records it; approval failures leave a retryable `partially_completed` state (section 14, FR-APP-5) |
 | Model output quality | Every model output is schema-validated and retried on malformed output (section 6, section 11); accuracy against the answer key is reported per run (TR-8) |
 | Dataset integrity | Production code never reads the answer key or special-cases dataset values (R8) |
@@ -267,6 +267,11 @@ Slice = the slice (requirements section 16) that first builds on the decision: 1
 | OQ-31 | After a re-check conflict, approval progress returns to `not_started`; the approver approves a fresh option or rejects (FR-APP-4) | 3, 4 |
 | OQ-32 | Fresh options replace the proposed slots; the earlier ones are kept in an audit entry; state reasons are read from audit entries; `superseded_by` links to the newer request | 3, 4 |
 | OQ-33 | The token header is `X-CRM-Token`, fetched from `GET /session` | 4 |
+| OQ-34 | Clarification requests are scheduling requests with outcome `request_clarification`; a newer email in the same thread offering concrete times supersedes it (OQ-16). After 3c, T01's request is still pending (scenario requests are asserted by trigger email: A05, T03, W06) and 3d.4 supersedes it. An ambiguous sender time zone also gives `request_clarification` (FR-SCH-3) | 3 |
+| OQ-35 | Test reports (TR-8 accuracy, TR-3 scores) go to `reports/` (git-ignored); baselines are copied to `tests/baselines/` only when the owner decides; review and resume prompts may run pytest and write only to `reports/` and temp directories | 2 |
+| OQ-36 | Approve may carry an optional edited draft reply body; `Orchestrator.approve` records the edit as an audit entry (OQ-4) and sends the approved text | 3, 4 |
+| OQ-37 | The mock calendar window is end exclusive; availability at or after `2026-10-31T00:00` is unknown (OQ-15) | 3 |
+| OQ-38 | `Orchestrator.approve` exists from 3e and is unit-tested there; the smoke-test approval assertions become real at 3f.5 | 3 |
 | Other | **API safety** (`decisions.md`, "Additional rules"; [api.md](api.md) section 10.1): bind 127.0.0.1 only; `Origin` and `Host` checks; CORS limited to `DASHBOARD_ORIGIN`; JSON content type plus `X-CRM-Token` on approve; a random per-run token not stored in `.env`; tested by TR-13. **Repeat approval** (R6, TR-6): approving the same request twice creates no duplicates | 4 |
 
 Configuration keys that these decisions introduced are in `example.env`: `APPROVER_USER`, `API_PORT`, `DASHBOARD_ORIGIN`, `STALE_LEAD_DAYS`. The bind address is deliberately not configurable (a security invariant, not a setting), and the per-run token is deliberately not a setting.
@@ -277,7 +282,7 @@ There is **no numbered design question left open**. `decisions.md` says any ques
 
 | Item | Source | Slice that needs it | What is needed |
 |---|---|---|---|
-| Python `zoneinfo` usage (and the need for the `tzdata` package) | `crm-scheduling-time-zones` skill | 3 (zone conversion); 1 only if stored times are converted there | Verify against official Python docs before writing conversion code |
+| ~~Python `zoneinfo` usage (and the need for the `tzdata` package)~~ | `crm-scheduling-time-zones` skill | **Settled in 1a** (item 1a.3, the `TimeInZone` value type), reused in 3a | Verify against official Python docs before writing the time value type; nothing left open after 1a |
 | Python form of the Ollama warm-up call | `crm-ollama-local-model` skill | **0** (the Slice 0 warm-up test; reused in 2a) | Verify against the `ollama` 0.6.3 README and Ollama docs before coding |
 | Exact `ollama` client usage for structured output | `crm-ollama-local-model` skill | 2 (2a, model provider) | Verify against the `ollama` 0.6.3 docs before coding |
 | Lock file and a real `pip check` after the first install of the pinned set | `inputs/references.md`; dry-run only so far | **0** (first real install, on Python 3.13) | Do in Slice 0 |

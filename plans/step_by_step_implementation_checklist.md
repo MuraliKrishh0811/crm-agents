@@ -1,6 +1,6 @@
 # Step-by-step implementation checklist
 
-Status: **revised 2026-10-16 with your seven decisions (see `inputs/decisions.md`); nothing below has been started.** Companion: [Overall_Implementation_plan.md](Overall_Implementation_plan.md) (rationale, risks, dependency register, smoke staging, test map).
+Status: **revised 2026-10-16 with your seven decisions (see `inputs/decisions.md`), then with the `REQUIREMENTS.md` R7 amendment (the `ENV LOADER`, now part of R7) and OQ-34 to OQ-38; nothing below has been started.** Companion: [Overall_Implementation_plan.md](Overall_Implementation_plan.md) (rationale, risks, dependency register, smoke staging, test map).
 
 ## How to read this file
 
@@ -10,7 +10,7 @@ Status: **revised 2026-10-16 with your seven decisions (see `inputs/decisions.md
 - File paths follow the layout below. **The layout is a proposal for you to confirm at item 1a.1**; tests live only under `tests/` (`agents`, `backend`, `frontend`, `smoke`). Python tests use **pytest** (approved; pinned as 9.1.1, test-only, in `references.md`). Run: `.venv/bin/python -m pytest -rs` so skip reasons are always printed. Environment: Python 3.13 (D10).
 - **Smoke test rule (decisions.md):** from Slice 1 on, "the smoke test" means `tests/smoke/test_smoke.py`, the single smoke test covering everything built so far. Assertions that cannot exist yet are **explicit skips** with the reason `not yet implemented (Slice N)`, shown in the output; **never a silent pass**. It has zero skips at 4d.
 - **Commit points:** **you make all commits.** At every commit-point item I show `git status`, propose a message that cites the requirement IDs, and wait. I never commit.
-- I never read `.env`. Tests receive settings from an explicit dictionary or inline non-secret environment values, not from your `.env`.
+- **`.env` (R7 as now written):** I never open, print, search or copy any `.env*` file myself. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1 only, while `.env` holds no real secrets). The loader, logs and settings objects print key names and set or blank status, never values. Slice 0 is unchanged: you run the key-name check (0.14b) and paste its output. Pure config unit tests (1a.4) may still use explicit dictionaries.
 - Live Graph, Entra ID, Azure OpenAI and Foundry behavior is UNVERIFIED everywhere in this file until Slice 6.
 
 Proposed layout (confirmed at 1a.1):
@@ -30,7 +30,8 @@ src/crm_agents/
   api/           app.py safety.py routes_*.py
   app/           composition.py logging.py
 frontend/        (Vite + React + TypeScript app, Slice 4e)
-tests/           agents/ backend/ frontend/ smoke/   (+ tests/agents/rubrics, tests/agents/baselines)
+tests/           agents/ backend/ frontend/ smoke/   (+ tests/agents/rubrics; tests/baselines/ only when you decide, OQ-35)
+reports/         (git-ignored: TR-8 accuracy, TR-3 scores, draft samples; OQ-35)
 plans/  docs/  requirements.txt  requirements.lock
 ```
 
@@ -46,7 +47,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **0.2 STOP AND ASK: approvals before anything is installed**
   - IDs: S1, S5, `CLAUDE.md` plan-first rule
   - Files: none
-  - Accept: (1) `inputs/references.md` lists `pytest 9.1.1` as test-only (done by you; I only check the file). (2) D10 and D11 are in `decisions.md` (done). (3) `git tag` lists `docs-baseline` (you make the docs-only commit and tag; I only check, read-only; it is not there yet as of 2026-10-16). (4) You acknowledge that `plans/` and the latest `decisions.md` and `REQUIREMENTS.md` edits are uncommitted until your next commit. Answers recorded here: ______ .
+  - Accept: (1) `inputs/references.md` lists `pytest 9.1.1` as test-only (done by you; I only check the file). (2) D10 and D11 are in `decisions.md` (done). (3) `git tag` lists `docs-baseline` (it exists on commit `6411d11`, checked 2026-10-16; I only check, read-only). (4) You acknowledge that the edits made after that commit (the `REQUIREMENTS.md` R7 amendment, `CLAUDE.md`, `decisions.md` OQ-34 to OQ-38, `plans/`, `prompts/`, `tools/`, the skills and docs) are uncommitted until your next commit; the `docs-baseline` tag does not include them. Answers recorded here: ______ .
 
 - [ ] **0.3 Confirm Python 3.13 (D10) and the failure rule**
   - IDs: D1, D10, R12
@@ -101,21 +102,21 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **0.13 Repository hygiene**
   - IDs: R7, section 14
   - Files: none (verify `.gitignore`, `.claude/settings.json`, `example.env`)
-  - Accept: `git check-ignore .env .venv` lists both; `git ls-files example.env` lists it; `.claude/settings.json` still denies `Read(./.env)`, `Read(./.env.*)`, `*.pem`, `*.key`; `example.env` contains `APPROVER_USER`, `API_PORT`, `DASHBOARD_ORIGIN`, `STALE_LEAD_DAYS`.
+  - Accept: `git check-ignore .env .venv reports/` lists all three (`reports/` is git-ignored, OQ-35); `git ls-files example.env` lists it; `.claude/settings.json` still denies `Read(./.env)`, `Read(./.env.*)`, `*.pem`, `*.key`; `example.env` contains `APPROVER_USER`, `API_PORT`, `DASHBOARD_ORIGIN`, `STALE_LEAD_DAYS`.
 
 - [ ] **0.14 STOP AND ASK: your `.env` (you created it; I do not read it)**
   - IDs: R7, D5, FR-CFG-1
   - Files: your `.env` (yours; I never open it); `example.env` (readable, already holds starting values and comments)
   - Accept: you confirm that `.env` exists and holds non-secret values. `example.env` already has starting values for the local keys (`OLLAMA_BASE_URL=http://localhost:11434`, `OLLAMA_MODEL=llama3.1:8b`, `OLLAMA_NUM_CTX=4096`, `OLLAMA_KEEP_ALIVE=30m`, `OLLAMA_TEMPERATURE=0`, `OLLAMA_MAX_RETRIES=2`, `OLLAMA_REQUEST_TIMEOUT_S=120`, `APPROVER_USER=local-user`, `API_PORT=8000`, `DASHBOARD_ORIGIN=http://localhost:5173`, `STALE_LEAD_DAYS=14`, the simulated clock) and blank values for the live keys and `DATABASE_URL`; after the 0.10 measurements I say whether the Ollama values look right. I confirm only that you did it, never the contents.
 
-- [ ] **0.14b Confirm configuration loads from the environment, without me reading `.env`**
-  - IDs: R7, FR-CFG-1, `crm-security-env` skill
-  - Files: `tests/smoke/check_env_keys.py` (a small checker, not application code)
-  - Accept: the application's own loader does not exist until 1a.4, so Slice 0 checks the mechanism one level down: the checker compares the **key names** in `.env` with the key names in `example.env` and prints **only** names (missing, unknown) and, for each key, whether it is set or blank, **never a value** (assertions are written on booleans so pytest cannot echo values; no `--showlocals`). **STOP AND ASK which way you want it run:** (a) **you run it** and paste the names-only output (nothing of mine opens the file), or (b) I run it, understanding that the program opens `.env` while I see only the names-only output. The real "the app loads configuration from the environment" confirmation is item 1a.4b, which runs the application's own loader. Result: ______
+- [ ] **0.14b Confirm configuration key names without me reading `.env` (you run the check)**
+  - IDs: R7, FR-CFG-1, `crm-security-env` skill, `decisions.md` (`.env` key-name check)
+  - Files: `tests/smoke/check_env_keys.py` (a small checker I write but **never run**; not application code)
+  - Accept: **you run the checker yourself** and paste its output. It compares the **key names** in `.env` with the key names in `example.env` and prints **only** names (missing, unknown) and, per key, whether it is set or blank, **never a value**. In Slice 0 I never open `.env` and never run any command that reads it (no `cat`, `grep`, `source`, `python` on it, and not this checker). From 1a, R7 lets tests and smoke runs that I execute use the application's own loader; that loader does not exist until 1a.4, and the real "the app loads configuration from the environment" confirmation is item 1a.4b, which prints key names only. Result you pasted: ______
 
 - [ ] **0.15 Slice 0 environment tests and commit point**
   - IDs: R11, TR-9
-  - Files: `requirements.txt`, `requirements-dev.txt`, `requirements.lock`, `tests/smoke/test_environment.py`, `tests/smoke/test_ollama_warmup.py`, `tests/smoke/test_dataset_integrity.py`, `tests/smoke/test_dataset_regeneration.py`, `tests/smoke/check_env_keys.py`, `pytest.ini` (or the config you approve at 1a.1), this checklist with results ticked
+  - Files: `requirements.txt`, `requirements-dev.txt`, `requirements.lock`, `tests/smoke/test_environment.py`, `tests/smoke/test_ollama_warmup.py`, `tests/smoke/test_dataset_integrity.py`, `tests/smoke/test_dataset_regeneration.py`, `tests/smoke/check_env_keys.py`, `pytest.ini` (created now with minimal content, for example `testpaths` and `-rs`; 1a.1 may amend it), this checklist with results ticked
   - Accept: `.venv/bin/python -m pytest -rs tests/smoke` passes with no skips; `git status` shows no `.env*` and no `.venv`; show `git status` and propose a commit message citing R11, D10; **you commit** (S5).
 
 **Slice 0 definition of done:** exact pins and pytest installed and importing on Python 3.13; `pip check` clean; lock file present; warm model proven with timings; dataset generation confirmed identical; `.env` created by you.
@@ -133,7 +134,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **1a.1 STOP AND ASK: Slice 1 design gate**
   - IDs: S1, S6, lld section 1
   - Files: none
-  - Accept: you confirm (or change) the layout above, packaging (src layout with pytest's `pythonpath` setting in `pytest.ini`, no new dependency), how `.env` is loaded by the application (stdlib loader, or `python-dotenv` which is only a transitive package today and would need your approval), and whether real environment variables override `.env` values (proposal: yes, so the process environment wins). pytest is already approved (`decisions.md`) and pinned at 0.2; pydantic is approved in principle and is pinned at 2a.1, so Slice 1 domain objects use the standard library (dataclasses and enums) unless you say otherwise. Each answer that is a decision is recorded in `inputs/decisions.md`.
+  - Accept: you confirm (or change) the layout above, packaging (src layout with pytest's `pythonpath` setting added to the minimal `pytest.ini` from Slice 0, no new dependency), how `.env` is loaded by the application (stdlib loader, or `python-dotenv` which is only a transitive package today and would need your approval), and whether real environment variables override `.env` values (proposal: yes, so the process environment wins). **Not asked here:** R7 already allows tests and smoke runs that I execute to use the application's loader on `.env` while it holds no real secrets; the loader, logs and settings objects print key names and set or blank status only. pytest is already approved (`decisions.md`) and pinned at 0.2; pydantic is approved in principle and is pinned at 2a.1, so Slice 1 domain objects use the standard library (dataclasses and enums) unless you say otherwise. Each answer that is a decision is recorded in `inputs/decisions.md`.
 
 - [ ] **1a.2 Enumerations and the nine entities**
   - IDs: requirements sections 5 and 9, FR-SCH-7, FR-SCH-12, OQ-3, OQ-17, OQ-27
@@ -153,7 +154,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **1a.4b Real-environment check with the application's own loader**
   - IDs: FR-CFG-1, R7, `crm-security-env` skill
   - Files: `tests/agents/test_config_real_env.py`
-  - Accept: the real loader (not a dictionary) reads the process environment and `.env` the way the application will, and the test asserts that every required local key is present and valid (`PROVIDER_MODE`, `OLLAMA_*`, `SIMULATED_NOW`, `SIMULATED_TZ`, `API_PORT`, `APPROVER_USER`, `DASHBOARD_ORIGIN`, `STALE_LEAD_DAYS`, `DATA_DIR`). Failure messages name keys only; no value is printed, logged or put in an assertion message; the test does not skip silently. I see only pass or fail with key names, so this confirms the app loads its configuration **without me reading the file**.
+  - Accept: the real loader (not a dictionary) reads the process environment and `.env` the way the application will, and the test asserts that every required local key is present and valid (`PROVIDER_MODE`, `OLLAMA_*`, `SIMULATED_NOW`, `SIMULATED_TZ`, `API_PORT`, `APPROVER_USER`, `DASHBOARD_ORIGIN`, `STALE_LEAD_DAYS`, `DATA_DIR`). Failure messages name keys only; no value is printed, logged or put in an assertion message; the test does not skip silently. I may run it (R7): the loader opens `.env`, I never open, print or search it, and I see only pass or fail with key names and set or blank status, so this confirms the app loads its configuration **without me reading the file**. Settings objects redact values in their string form (test this).
 
 - [ ] **1a.5 The four provider interfaces**
   - IDs: R2, requirements section 6, OQ-28, FR-AUD-1
@@ -394,7 +395,7 @@ plans/  docs/  requirements.txt  requirements.lock
 
 - [ ] **2c.5 TR-8 accuracy report**
   - IDs: TR-8, D5
-  - Files: `tests/agents/test_model_accuracy.py`; report written under `tests/agents/baselines/` or `reports/` (location confirmed by you)
+  - Files: `tests/agents/test_model_accuracy.py`; report written to `reports/` (git-ignored, OQ-35); nothing is copied to `tests/baselines/` unless you decide
   - Accept: every run writes accuracy per email and overall, with model name and `num_ctx`; the replay duration is recorded and shown to you.
 
 - [ ] **2c.6 Smoke test: Slice 2 assertions become real**
@@ -427,8 +428,8 @@ plans/  docs/  requirements.txt  requirements.lock
 
 - [ ] **2d.3 TR-3 advisory layer (never gates)**
   - IDs: TR-3, `decisions.md`
-  - Files: `tests/agents/rubrics/summary.md`, `tests/agents/scoring/advisory.py`, `tests/agents/baselines/tr3_baseline.json`, `tests/agents/test_summary_advisory.py`
-  - Accept: a written rubric (accuracy, completeness, tone, actionability, 1 to 5) is scored by the local model; the first run records a baseline; later runs report regressions; **nothing here fails a slice**. The weakness of an 8B model as its own judge is stated in the report.
+  - Files: `tests/agents/rubrics/summary.md`, `tests/agents/scoring/advisory.py`, `reports/tr3_baseline.json` (git-ignored, OQ-35), `tests/agents/test_summary_advisory.py`
+  - Accept: a written rubric (accuracy, completeness, tone, actionability, 1 to 5) is scored by the local model; the first run records a baseline in `reports/` (copied to `tests/baselines/` only when you decide, OQ-35); later runs report regressions; **nothing here fails a slice**. The weakness of an 8B model as its own judge is stated in the report.
 
 - [ ] **2d.4 Owner sample for demos**
   - IDs: `decisions.md` (owner reads a sample of drafts before demos)
@@ -459,7 +460,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **3a.1 Read availability and working hours**
   - IDs: section 6, FR-SCH-5, OQ-6, OQ-15, OQ-28, R10
   - Files: `src/crm_agents/providers/local/mock_calendar.py`; `tests/agents/test_mock_calendar_read.py`
-  - Accept: `get_availability` returns per user `working_hours` and `busy_blocks` as `TimeInZone`; a user without working hours gets the default (08:00 to 17:00 Mon to Fri `America/Chicago`); a request outside 2026-10-19 to 2026-10-31 is "unknown, no calendar data", not free; facts check: Raj busy 09:00 to 10:00 on Oct 27, Sarah out of office all of Oct 19, David's lunch is `free`, Raj out of office Oct 23.
+  - Accept: `get_availability` returns per user `working_hours` and `busy_blocks` as `TimeInZone`; a user without working hours gets the default (08:00 to 17:00 Mon to Fri `America/Chicago`); the window is read from the JSON `window` (2026-10-19T00:00 to 2026-10-31T00:00 America/Chicago) and is **end exclusive** (OQ-37): availability at or after 2026-10-31T00:00, or before the start, is "unknown, no calendar data", not free; boundary test: a 30-minute range ending at 2026-10-31T00:00 is known, one starting at 2026-10-31T00:00 is unknown; facts check: Raj busy 09:00 to 10:00 on Oct 27, Sarah out of office all of Oct 19, David's lunch is `free`, Raj out of office Oct 23.
 
 - [ ] **3a.2 Create, update, find and find_events with the overlay**
   - IDs: FR-APP-2, FR-SCH-9, OQ-9, OQ-15, OQ-22, D11, R6, R10, requirements section 6
@@ -469,7 +470,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **3a.3 Derive the sender's time zone**
   - IDs: FR-SCH-2, OQ-7, R9, S6
   - Files: `src/crm_agents/scheduling/zones.py`; `tests/agents/test_zone_derivation.py`
-  - Accept: order is contact zone, explicit zone in text, then candidate zones whose UTC offset on the email's sent date equals the `Date` offset, narrowed by hints and **validated in code**; unresolved ambiguity returns "ask the customer to confirm", never a guess. The slice-start question (S6) is answered first and recorded: how zone abbreviations and city hints are tabulated (as general data, not dataset-specific). Tests include real dataset headers (London +0100, Denver -0600, New York -0400) and constructed ambiguous cases.
+  - Accept: order is contact zone, explicit zone in text, then candidate zones whose UTC offset on the email's sent date equals the `Date` offset, narrowed by hints and **validated in code**; unresolved ambiguity returns "ask the customer to confirm", never a guess, and the Scheduler turns it into outcome `request_clarification` asking the customer to confirm their time zone, proposing no times and creating no meeting (FR-SCH-3, OQ-34); a test with a constructed ambiguous `Date` offset and no zone hint asserts this. The slice-start question (S6) is answered first and recorded: how zone abbreviations and city hints are tabulated (as general data, not dataset-specific). Tests include real dataset headers (London +0100, Denver -0600, New York -0400) and constructed ambiguous cases.
 
 - [ ] **3a.4 Resolve windows to UTC (relative dates, DST, past times)**
   - IDs: FR-SCH-2, OQ-5, OQ-24, R4, R9, S6
@@ -501,7 +502,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **3b.3 Outcome selection**
   - IDs: FR-SCH-7, FR-SCH-3, FR-SCH-8, FR-SCH-9
   - Files: `src/crm_agents/scheduling/outcomes.py`; `tests/agents/test_outcomes.py`
-  - Accept: exactly one of `recommend_slots`, `counter_propose`, `request_clarification`, `update_existing_meeting` for each input class (selected slot; no overlap; no concrete times; reschedule of an existing meeting).
+  - Accept: exactly one of `recommend_slots`, `counter_propose`, `request_clarification`, `update_existing_meeting` for each input class (selected slot; no overlap; no concrete times; **ambiguous sender time zone, which gives `request_clarification` with no slots, FR-SCH-3, OQ-34**; reschedule of an existing meeting), each with its own test.
 
 - [ ] **3b.4 TR-2 exact-match on the pure code**
   - IDs: TR-2, R8
@@ -547,14 +548,14 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **3c.5 End-to-end TR-2 and TR-1 clarification**
   - IDs: TR-1, TR-2, S8
   - Files: `tests/agents/test_scheduling_end_to_end.py`
-  - Accept: against the real model after a full replay: exactly three requests are `pending`: Adventure Works `recommend_slots` (Oct 27 10:00 to 11:00 CT), Tailspin `counter_propose` (no meeting), Wingtip `update_existing_meeting`; the vague Tailspin email produced a `request_clarification` that guessed no times. W06 end to end exercises the same lookup with the real model's extraction. Failures: report and ask (S8).
+  - Accept: against the real model after a full replay, the requests are asserted **by trigger email** (OQ-34): A05 is `pending` with `recommend_slots` (Oct 27 10:00 to 11:00 CT), T03 is `pending` with `counter_propose` (no meeting), W06 is `pending` with `update_existing_meeting`; T01's request has outcome `request_clarification`, guessed no times and is **still `pending` at this point** (3d.4 supersedes it); no other request exists. W06 end to end exercises the same lookup with the real model's extraction. Failures: report and ask (S8).
 
 - [ ] **3c.6 Commit point (3c)**
   - IDs: R11, `CLAUDE.md` commit gate (tests and smoke pass), S5
   - Files: every file added or changed in this sub-slice, reviewed with `git status` and `git diff`; no `.env*`, no `.venv`
-  - Accept: tests and the single smoke test pass (the pending-request assertions are real; approval ones stay explicit skips until 3e/3f); show `git status` and propose a commit message citing the IDs; **you commit** (S5).
+  - Accept: tests and the single smoke test pass (the pending-request assertions by trigger email are real; approval ones stay explicit skips until 3f.5, OQ-38); show `git status` and propose a commit message citing the IDs; **you commit** (S5).
 
-**Slice 3c definition of done:** replay leaves the three expected pending requests and nothing booked or sent.
+**Slice 3c definition of done:** replay leaves the three expected scenario requests (trigger emails A05, T03, W06) pending, T01's clarification request still pending until 3d.4 (OQ-34), and nothing booked or sent.
 **Tests that must pass:** TR-1 clarification, TR-2 end to end (before approval), the reschedule lookup tests of 3c.2 (W06 single match, several matches, no match), 3a.2 `find_events` tests, earlier tests.
 **Smoke test:** staging row 3, part (a).
 **hld.md section 12.2 items settled:** none (the event-location rule is decided in D11 and FR-SCH-9).
@@ -564,7 +565,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **3d.1 Prepare draft replies**
   - IDs: FR-SCH-3, FR-SCH-8, R4, OQ-2
   - Files: `scheduler.py`; `tests/agents/test_drafts.py`
-  - Accept: the model writes prose around placeholders and **code inserts the times** formatted in the customer's zone; the Tailspin counter-proposal shows 2 or 3 slots in Mountain time with none on Oct 19; Adventure Works shows the proposed time in London time; a clarification asks for specific times; **a reschedule clarification (no match, or several unresolved matches in 3c.2) asks which meeting is meant**; the draft is stored on the request and nothing is sent.
+  - Accept: the model writes prose around placeholders and **code inserts the times** formatted in the customer's zone; the Tailspin counter-proposal shows 2 or 3 slots in Mountain time with none on Oct 19; Adventure Works shows the proposed time in London time; a clarification asks for specific times; **a time zone clarification (ambiguous sender zone, FR-SCH-3, OQ-34) asks the customer to confirm their time zone and lists no times, with a test**; **a reschedule clarification (no match, or several unresolved matches in 3c.2) asks which meeting is meant**; the draft is stored on the request and nothing is sent.
 
 - [ ] **3d.2 TR-3 for drafts**
   - IDs: TR-3, `decisions.md`
@@ -579,7 +580,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **3d.4 Supersede, cancel, expire**
   - IDs: FR-SCH-12, OQ-16, OQ-32
   - Files: `scheduler.py`, `crm_writer.py`; `tests/agents/test_request_states.py`
-  - Accept: a newer email in the same thread offering new times sets the earlier pending request to `superseded` and records `superseded_by`; a withdrawal sets it to `cancelled`; a request whose windows are all past becomes `expired`; old requests are kept; the Tailspin vague-then-concrete sequence shows one `superseded` clarification (if the emails share a thread) and one `pending` counter-proposal.
+  - Accept: a newer email in the same thread offering new times sets the earlier pending request to `superseded` and records `superseded_by`; a withdrawal sets it to `cancelled`; a request whose windows are all past becomes `expired`; old requests are kept; T01's clarification request becomes `superseded` by the request from T03 (T03 references T01 and T02, so they share a thread; OQ-34) with `superseded_by` set, and T03's counter-proposal stays `pending`; after this item exactly three requests are `pending` (A05, T03, W06).
 
 - [ ] **3d.5 TR-10 with an injected later simulated clock**
   - IDs: TR-10, OQ-24, R11
@@ -593,7 +594,7 @@ plans/  docs/  requirements.txt  requirements.lock
 
 **Slice 3d definition of done:** drafts are code-formatted and gated; the four lifecycle transitions are tested, including expiry via an injected clock.
 **Tests that must pass:** TR-10, TR-3 (drafts), earlier tests.
-**Smoke test:** staging row 3, part (a), now with drafts present.
+**Smoke test:** staging row 3, part (a), now with drafts present and T01's request superseded.
 **hld.md section 12.2 items settled:** TR-3 scorer extended to drafts.
 
 ### 3e Approval handler
@@ -611,7 +612,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **3e.3 Send path**
   - IDs: FR-APP-2, OQ-25, FR-ING-7
   - Files: `approval.py`, `eml_mail.py`; `tests/agents/test_approval_send.py`
-  - Accept: the handler calls `create_reply_draft` then `send_draft`; the sent mail appears as an engagement entry; a later arrival of the same Message-ID is deduplicated.
+  - Accept: the handler calls `create_reply_draft` then `send_draft`; the sent mail appears as an engagement entry; a later arrival of the same Message-ID is deduplicated. **Optional edited draft body (OQ-36):** `Orchestrator.approve` accepts it, records it as an audit entry like an edit (OQ-4) and sends the approved text; tests: approve with an edited body sends exactly that text and leaves one edit audit entry; approve without one sends the stored draft; the edit changes no other field.
 
 - [ ] **3e.4 Post-approval scenario outcomes (TR-2 after approval)**
   - IDs: TR-2, section 10 note, FR-CRM-2, OQ-8, R10
@@ -625,7 +626,7 @@ plans/  docs/  requirements.txt  requirements.lock
 
 **Slice 3e definition of done:** approval produces the section 10 outcomes for all three scenarios.
 **Tests that must pass:** TR-2 after approval, earlier tests.
-**Smoke test:** staging row 3 with part (b) through `Orchestrator.approve`.
+**Smoke test:** staging row 3 unchanged. `Orchestrator.approve` exists from 3e and is unit-tested here (OQ-38); the smoke-test approval assertions stay explicit skips and become real at 3f.5.
 **hld.md section 12.2 items settled:** none.
 
 ### 3f Approval tests: repeat approval, re-check conflict, step failure
@@ -653,7 +654,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **3f.5 Smoke test: Slice 3 assertions become real, and Slice 3 close**
   - IDs: TR-9, TR-6
   - Files: `tests/smoke/test_smoke.py`
-  - Accept: the scheduling and approval skips (except the real-endpoint ones) become real assertions. Covers: warm-up; replay (final stages; the three pending requests; nothing booked or sent); approval through `Orchestrator.approve` for each; repeat approvals; no duplicates. **The only remaining skips are the real-endpoint approval assertions, each shown as "not yet implemented (Slice 4d)".** show `git status` and propose a commit message citing the IDs; **you commit** (S5).
+  - Accept: the scheduling and approval skips (except the real-endpoint ones) become real assertions. Covers: warm-up; replay (final stages; the three scenario requests pending by trigger email; nothing booked or sent); approval through `Orchestrator.approve` for each; repeat approvals; no duplicates. **The only remaining skips are the real-endpoint approval assertions, each shown as "not yet implemented (Slice 4d)".** show `git status` and propose a commit message citing the IDs; **you commit** (S5).
 
 **Slice 3 (overall) definition of done:** see the overall plan, section 8.
 **Tests that must pass:** TR-1, TR-2, TR-3, TR-6, TR-10, TR-11, TR-12 and all earlier tests.
@@ -761,7 +762,7 @@ plans/  docs/  requirements.txt  requirements.lock
 - [ ] **4d.1 Approve endpoint**
   - IDs: FR-APP-2 to FR-APP-5, R5, R6, OQ-31, OQ-32
   - Files: `api/routes_requests.py`; `tests/backend/test_api_approve.py`, `tests/backend/curl/approve_*.sh`
-  - Accept: the endpoint requires `Idempotency-Key` (400 if missing); the replay table of `docs/api.md` holds (same key returns the stored result with `idempotent_replay: true`; a different request or body with the same key is 422; a new key on a completed approval returns the recorded result; a new key while in progress is 409; a `partially_completed` approval retries); it names exactly one slot for booking outcomes.
+  - Accept: the endpoint requires `Idempotency-Key` (400 if missing); the replay table of `docs/api.md` holds (same key returns the stored result with `idempotent_replay: true`; a different request or body with the same key is 422; a new key on a completed approval returns the recorded result; a new key while in progress is 409; a `partially_completed` approval retries); it names exactly one slot for booking outcomes; the body may carry an optional `draft_reply_body` (OQ-36), which is recorded as an edit audit entry and is the text sent, tested through HTTP (with and without it, and a repeat with the same key sends once).
 
 - [ ] **4d.2 Conflict and failure responses**
   - IDs: TR-11, TR-12, FR-APP-4, FR-APP-5
@@ -1024,7 +1025,7 @@ Rule for all of Slice 5: **re-read the official docs and changelog for each call
   - Accept: setting `PROVIDER_MODE=live` or per-provider keys selects the live providers; the active provider is recorded in the audit log; local mode still passes the full smoke test.
 
 - [ ] **6.3 Verify each live provider against the first-day checklist**
-  - IDs: `docs/first_day_with_access.md` items 1 to 16, S3
+  - IDs: `docs/first_day_with_access.md` items 1 to 17, S3
   - Files: `docs/first_day_with_access.md` (date and result beside each item), `tests/agents/test_live_*` (contract samples corrected against real responses)
   - Accept: each numbered check is run on the real service and its result and date written down; failures are fixed only after you decide (S2 applies to tests); nothing is claimed verified until its check is recorded.
 

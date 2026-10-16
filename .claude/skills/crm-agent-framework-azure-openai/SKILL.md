@@ -9,8 +9,8 @@ description: Microsoft Agent Framework (Python) with Foundry or Azure OpenAI for
 
 - **Everything is real.** The live adapter is a real implementation written from current docs. No mocking, stubs, canned or hardcoded responses, no hardcoded snippets standing in for behavior.
 - **Ollama is the local fallback.** Local mode (Ollama) is the working system in Phase 1; this live path is off by default (R3) and cannot run until IT provides access.
-- **Never read `.env`.** Use `example.env` only.
-- **`REQUIREMENTS.md` is authoritative** (sections 6, 12). Only `inputs/decisions.md` can override it.
+- **`.env` (R7):** Claude never opens, prints, searches or copies a `.env*` file; use `example.env` only. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1, no real secrets); it never prints values.
+- **`REQUIREMENTS.md` is authoritative** (sections 6, 12). `inputs/decisions.md` records owner decisions where it is silent.
 
 ## Status
 

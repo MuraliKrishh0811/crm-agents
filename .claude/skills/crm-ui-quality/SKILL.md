@@ -9,8 +9,8 @@ description: UI quality rules for the CRM Agents React + Vite + TypeScript dashb
 
 - **Everything is real.** The UI talks to the real CRM API and shows real agent output. No mocked endpoints, canned data, placeholder responses or hardcoded demo content in shipped code.
 - **Ollama is the local fallback.** In Phase 1 the data the UI shows comes from local mode (Ollama, `.eml`, mock calendar); the UI says so (see "Show provenance").
-- **Never read `.env`.** Use `example.env` only; the frontend receives no secrets.
-- **`REQUIREMENTS.md` is authoritative** (sections 7 FR-UI and FR-API). Only `inputs/decisions.md` can override it.
+- **`.env` (R7):** Claude never opens, prints, searches or copies a `.env*` file; use `example.env` only. The application's own settings loader may read `.env` when tests or smoke runs execute (Phase 1, no real secrets); it never prints values; the frontend receives no secrets.
+- **`REQUIREMENTS.md` is authoritative** (sections 7 FR-UI and FR-API). `inputs/decisions.md` records owner decisions where it is silent.
 
 ## Stack and scope
 

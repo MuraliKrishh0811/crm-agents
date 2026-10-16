@@ -1,12 +1,12 @@
 # Overall implementation plan
 
-Status: **revised 2026-10-16 with your seven decisions applied (recorded in `inputs/decisions.md`: D10 and the staged smoke test, pytest approval, commit policy and dataset-check rules). No application code exists; Slice 0 starts when you say go.** `CLAUDE.md` says to plan first and wait for approval.
+Status: **revised 2026-10-16 with your seven decisions applied (recorded in `inputs/decisions.md`: D10 and the staged smoke test, pytest approval, commit policy and dataset-check rules), then with the `REQUIREMENTS.md` R7 amendment (the `ENV LOADER`), D10 and D11 in section 15, and OQ-34 to OQ-38. No application code exists; Slice 0 starts when you say go.** `CLAUDE.md` says to plan first and wait for approval.
 
 Companion file: [step_by_step_implementation_checklist.md](step_by_step_implementation_checklist.md) (every item with requirement IDs, files and an acceptance check).
 
-Authority: `REQUIREMENTS.md` is authoritative (R1 to R12, section 16 order). `inputs/decisions.md` records D1 to D11, OQ-1 to OQ-33, the TR-3 scorer and the process decisions of 2026-10-16 (staged smoke test, pytest, dependency approvals in principle, commits, dataset check). `inputs/references.md` holds the only approved dependencies and pins. Design detail is in `docs/hld.md`, `docs/lld.md`, `docs/api.md`; live-access checks are in `docs/first_day_with_access.md`; the project skills in `.claude/skills/` carry the rules and the UNVERIFIED snippets.
+Authority: `REQUIREMENTS.md` is authoritative (R1 to R12, section 16 order); `inputs/decisions.md` records owner decisions where it is silent. `inputs/decisions.md` records D1 to D11, OQ-1 to OQ-38, the TR-3 scorer and the process decisions of 2026-10-16 (staged smoke test, pytest, dependency approvals in principle, commits, dataset check). `inputs/references.md` holds the only approved dependencies and pins. Design detail is in `docs/hld.md`, `docs/lld.md`, `docs/api.md`; live-access checks are in `docs/first_day_with_access.md`; the project skills in `.claude/skills/` carry the rules and the UNVERIFIED snippets.
 
-Hard constraints for the whole plan: all code is real (R1); no `.env` is ever read (R7); live Graph, Entra ID, Azure OpenAI and Foundry behavior stays UNVERIFIED until access exists (section 18 of the requirements); `REQUIREMENTS.md` and the dataset are never edited to make a test pass.
+Hard constraints for the whole plan: all code is real (R1); I never open, print or search `.env` myself, and the application's own loader may read it when tests or smoke runs execute while it holds no real secrets (R7); live Graph, Entra ID, Azure OpenAI and Foundry behavior stays UNVERIFIED until access exists (section 18 of the requirements); `REQUIREMENTS.md` and the dataset are never edited to make a test pass.
 
 ## 1. How the slices are cut
 
@@ -34,8 +34,8 @@ For every slice the checklist gives: a definition of done, the tests that must p
 | Ollama 0.40.5 is installed and `llama3.1:8b` (4.9 GB) is already pulled | Slice 0 confirms it and does the warm-up test; no download needed unless it has gone missing |
 | `data/synthetic/generate.py` uses only the standard library (`zoneinfo` included), reads no input files, and **writes into its own folder** | Slice 0 runs a copy of the script in an empty scratch folder (so every output is freshly written) and compares with `data/synthetic`: `calendars`, `config` and `expected` files byte for byte, the `.eml` files by parsed headers, bodies and attachments (multipart boundaries are random). The dataset itself is never touched |
 | 32 `.eml` files in 6 folders; all dated before the simulated clock (latest 16 Oct 07:12 CT) | Replay sees every email with the clock fixed at `SIMULATED_NOW` (OQ-24) |
-| `example.env` now holds starting values and comments for all 28 keys (live keys and `DATABASE_URL` blank; no secrets; checked 2026-10-16); `.gitignore` covers `.env`, `.venv`, `*.db` | You created `.env` yourself with non-secret values; I never open it. Slice 0 checks key names without values (0.14b) and Slice 1a runs the app's own loader (1a.4b) |
-| Docs, skills and decisions are committed (HEAD `543ba0c`, "Finalize docs and skills; add TR-3 scorer decision"); the `docs-baseline` tag is not there yet; `plans/` and the latest `decisions.md` edits are uncommitted | You make the docs-only commit and the `docs-baseline` tag; Slice 0 item 0.2 only checks they exist |
+| `example.env` now holds starting values and comments for all 28 keys (live keys and `DATABASE_URL` blank; no secrets; checked 2026-10-16); `.gitignore` covers `.env`, `.venv`, `*.db` | You created `.env` yourself with non-secret values; I never open it. Slice 0 checks key names without values (0.14b, you run it); from 1a the app's own loader may read it when tests I run execute (R7, 1a.4b) |
+| Docs, skills, `REQUIREMENTS.md` and decisions are committed up to HEAD `6411d11` ("Finalize plan, decisions and find_events (FR-SCH-9, D11)"), and the `docs-baseline` tag exists on it; later edits (R7 amendment, `CLAUDE.md`, `decisions.md` OQ-34 to OQ-38, `plans/`, `prompts/`, `tools/`, skills, docs, `.gitignore`) are uncommitted | You commit those; Slice 0 item 0.2 only checks the tag exists |
 | `tests/` has empty `agents`, `backend`, `frontend`, `smoke` folders | Matches the structure in the `crm-testing-smoke` skill |
 
 ## 3. Decisions you made (2026-10-16) and what is still needed from you
@@ -51,13 +51,13 @@ Recorded in `inputs/decisions.md` unless noted.
 | 5 | **`hld.md` section 12.2 updated:** lock file, `pip check` and the warm-up item moved to Slice 0; TR-3 scorer marked as decided | Done in `hld.md`; section 9 here matches |
 | 6 | **Dataset check:** `generate.py` on a copy; `calendars`, `config`, `expected` byte for byte; `.eml` by parsed headers, bodies and attachments | Item 0.11 |
 | 7 | **Slice-start choices: ask as planned; Wingtip event lookup answered as D11.** You added `CalendarProvider.find_events` to `REQUIREMENTS.md` section 6, rewrote FR-SCH-9 with the lookup rule, and recorded D11 | Item 3c.2 is now an implementation item with tests for the W06 case, several matches and no match; local `find_events` is in 3a.2; live in 5c.2 |
-| 8 | **`.env` created by you; I do not read it.** Slice 0 confirms configuration without my reading the file | Items 0.14, 0.14b, 1a.4b |
+| 8 | **`.env` created by you; I do not read it.** Slice 0 confirms configuration key names through a check **you run and paste**; in Slice 0 I run nothing that reads `.env`; from 1a, R7 lets tests I run use the app's loader | Items 0.14, 0.14b, 1a.4b |
 
 **Still needed from you**
 
 1. **Nothing is waiting on the pytest pin**: it is in `references.md` (item 0.2 only checks the file).
-2. **How to run the key-name check** (item 0.14b): you run it and paste the names-only output, or I run it knowing it opens `.env` and prints names only. The application's own loader is then confirmed in 1a.4b.
-3. **The `docs-baseline` tag** (item 0.2): not present yet (`git tag` is empty); I only check that it exists.
+2. **The key-name check** (item 0.14b): you run it yourself and paste the names-only output; in Slice 0 I never open `.env` or run a command that reads it. The application's own loader is confirmed in 1a.4b, which I may run (R7).
+3. **The `docs-baseline` tag** (item 0.2): it exists (on `6411d11`); I only check that it exists. Nothing needed from you.
 4. **Nothing else is outstanding for the Wingtip lookup**: D11 and FR-SCH-9 settle it.
 
 ## 4. Standing rules and the "stop and ask me" points
@@ -76,7 +76,7 @@ These apply to every sub-slice and are repeated in the checklist where they bite
 | S8 | a model-dependent exact-match test (TR-1, TR-2) failing: I report the failures and accuracy, and propose options (prompt change, deterministic guard, model comparison). I **do not loosen the test** | R4, R8, `crm-testing-smoke` |
 | S9 | running anything that writes outside the repo (other than the scratch directory), installs system software, or reads outside the project | safety |
 
-Always true, never a question: I never read, print or open any `.env*` file; I write no production behavior that special-cases dataset names, email IDs or dates (R8); nothing is booked, updated or sent without an approval action (R5); no stubs or hardcoded responses (R1); `REQUIREMENTS.md` is not edited.
+Always true, never a question: I never open, print, search or copy any `.env*` file myself (R7: only the application's own loader may read it when tests or smoke runs execute; nothing prints values); I write no production behavior that special-cases dataset names, email IDs or dates (R8); nothing is booked, updated or sent without an approval action (R5); no stubs or hardcoded responses (R1); `REQUIREMENTS.md` is not edited.
 
 ## 5. Dependency register
 
@@ -108,7 +108,7 @@ From Slice 1 on there is **one** smoke test, `tests/smoke/test_smoke.py`, coveri
 | 0 | Environment tests only (imports and pins, Ollama warm-up, dataset integrity); the single smoke test starts at 1a |
 | 1 | Real assertions: start in local mode; replay all 32 emails through the real mail provider into SQLite; replay twice gives identical rows; no duplicates by Message-ID. Skips: stages, scheduling, approval |
 | 2 | Real assertions added: agents run on every email; each customer reaches its final stage (Fabrikam Converted, Northwind Not Converted, Adventure Works Engagement, Tailspin Engagement, Wingtip Presentation/Follow-up); noise and duplicate ignored; TR-8 accuracy printed |
-| 3 | Real assertions added: replay leaves a **pending** request for Adventure Works (`recommend_slots`), Tailspin (`counter_propose`), Wingtip (`update_existing_meeting`) with nothing booked or sent. From 3e, approval runs through `Orchestrator.approve` (the handler itself, not a repository or provider call), and repeating it creates no duplicate. Still skipped: approval through the real endpoint |
+| 3 | Real assertions added: replay leaves a **pending** request, asserted **by trigger email** (OQ-34), for A05 Adventure Works (`recommend_slots`), T03 Tailspin (`counter_propose`) and W06 Wingtip (`update_existing_meeting`) with nothing booked or sent. After 3c, T01's `request_clarification` request is also still pending; 3d.4 supersedes it, after which exactly three are pending. `Orchestrator.approve` exists and is unit-tested from 3e (OQ-38); the smoke approval assertions (through `Orchestrator.approve`, the handler itself, never a repository or provider call, and repeat approval creates no duplicate) become real at 3f.5. Still skipped: approval through the real endpoint |
 | 4d | **Full TR-9 as written in section 13, zero skips**: part (a) replay without approval; part (b) approval through the **real approval endpoint**; repeat-approval check; no duplicates |
 | 5 and later | Full TR-9 unchanged, local mode only; live providers stay disabled and are covered by contract tests (TR-7) |
 
@@ -140,11 +140,11 @@ For each slice: the goal, the sub-slices (detail in the checklist), then the **d
 
 Goal: a verified, reproducible Python 3.13 environment, a warm local model and a confirmed dataset, before any code.
 
-- **Definition of done:** the venv is confirmed as a clean Python 3.13 venv (D10: you recreated it) and the exact six pins are really installed; `pytest` is installed at the pin you approved; `pip check` is clean; `requirements.txt` (six runtime pins), `requirements-dev.txt` (pytest) and `requirements.lock` (full freeze) exist; every package imports; `llama3.1:8b` is present and a real warm-up call works with cold and warm timings recorded; `generate.py` ran on a copy and its output matches `data/synthetic/` (calendars, config and expected files byte for byte; each `.eml` by parsed headers, bodies and attachments); you have created `.env` and the key-name check (0.14b) passed without me reading the file.
+- **Definition of done:** the venv is confirmed as a clean Python 3.13 venv (D10: you recreated it) and the exact six pins are really installed; `pytest` is installed at the pin you approved; `pip check` is clean; `requirements.txt` (six runtime pins), `requirements-dev.txt` (pytest) and `requirements.lock` (full freeze) exist; every package imports; `llama3.1:8b` is present and a real warm-up call works with cold and warm timings recorded; `generate.py` ran on a copy and its output matches `data/synthetic/` (calendars, config and expected files byte for byte; each `.eml` by parsed headers, bodies and attachments); you have created `.env` and the key-name check (0.14b, run by you) passed without me reading the file.
 - **Failure rule:** if any pinned package fails to install **or import** on Python 3.13, I stop and ask you (S4). There is no fallback branch to another Python version.
 - **Tests that must pass:** `tests/smoke/test_environment.py`, `tests/smoke/test_ollama_warmup.py`, `tests/smoke/test_dataset_integrity.py`, `tests/smoke/test_dataset_regeneration.py` (pytest; skip reasons shown with `-rs`; none of these may skip).
 - **Smoke test:** the four environment files above (staging row 0). The single smoke test starts in 1a.
-- **Commit point:** after all four pass: `requirements.txt`, `requirements-dev.txt`, `requirements.lock`, the four test files, `pytest.ini`, the ticked checklist. **You commit**: I show `git status` and propose a message, then wait. The documentation baseline commit and the `docs-baseline` tag are yours and come first.
+- **Commit point:** after all four pass: `requirements.txt`, `requirements-dev.txt`, `requirements.lock`, the four test files, `tests/smoke/check_env_keys.py`, `pytest.ini` (minimal content; 1a.1 may amend it), the ticked checklist. **You commit**: I show `git status` and propose a message, then wait. The documentation baseline commit and the `docs-baseline` tag are yours and come first.
 - **hld.md section 12.2 items settled:** lock file and `pip check`; the Python form of the Ollama warm-up call (`hld.md` was updated to say so). Not settled here: `zoneinfo` verification (1a).
 
 ### Slice 1: Providers, local mail, SQLite
@@ -156,7 +156,7 @@ Goal: the four interfaces, config, the SQLite repository and the `.eml` mail pro
 - **Smoke test:** staging row 1.
 - **Commit points:** after each of 1a, 1b, 1c, 1d.
 - **Open items settled:** Python `zoneinfo` verification (1a); the `customers_by_stage` shape (the query returns all five stage keys; the dashboard confirms in 4e); meeting and next action status values and request fields are already decided (OQ-3, OQ-17) and are just implemented.
-- **Slice-start questions:** layout and packaging (src layout with `PYTHONPATH` or an install step; no new dependency); local mail outbox storage for sent drafts (1c); whether `.env` loading uses a small stdlib loader or `python-dotenv`.
+- **Slice-start questions:** layout and packaging (src layout with `PYTHONPATH` or an install step; no new dependency); local mail outbox storage for sent drafts (1c); whether `.env` loading uses a small stdlib loader or `python-dotenv` (whether tests I run may use the loader is settled by R7).
 
 ### Slice 2: Ingestion and stage classifier on Ollama
 
@@ -173,7 +173,7 @@ Goal: replay every email through ingestion and classification and match the answ
 
 Goal: all three scenarios produce the expected outcomes before and after approval, with request lifecycle and approval steps tested.
 
-- **Definition of done:** the local `CalendarProvider` returns working hours and busy blocks, persists created events in an overlay, and **`find_events` reads attendees and event keys from the mock JSON and merges the overlay (D11, OQ-22)**; pure scheduling code converts zones correctly (DST trap), caps by working hours, applies blocking rules, ranks at most 3 slots with the fallback last and a reason for every window; the Scheduler Agent extracts windows with the model, **locates the meeting to reschedule with `find_events` (one match is the target, several are narrowed by the original meeting day, anything else is a clarification and never a duplicate; FR-SCH-9)** and chooses exactly one outcome; replay leaves exactly the three expected pending requests with nothing booked or sent; drafts show times formatted by code; supersede, cancel and expire work; the approval handler runs the four recorded steps with idempotency; re-check conflicts, step failures and repeat approvals behave as specified.
+- **Definition of done:** the local `CalendarProvider` returns working hours and busy blocks, persists created events in an overlay, and **`find_events` reads attendees and event keys from the mock JSON and merges the overlay (D11, OQ-22)**; pure scheduling code converts zones correctly (DST trap), caps by working hours, applies blocking rules, ranks at most 3 slots with the fallback last and a reason for every window; the Scheduler Agent extracts windows with the model, **locates the meeting to reschedule with `find_events` (one match is the target, several are narrowed by the original meeting day, anything else is a clarification and never a duplicate; FR-SCH-9)** and chooses exactly one outcome; replay leaves the three expected scenario requests (trigger emails A05, T03, W06) pending, with T01's clarification request pending until 3d.4 supersedes it (OQ-34), and nothing booked or sent; ambiguous sender zones give `request_clarification` (FR-SCH-3); approve accepts an optional edited draft body (OQ-36); drafts show times formatted by code; supersede, cancel and expire work; the approval handler runs the four recorded steps with idempotency; re-check conflicts, step failures and repeat approvals behave as specified.
 - **Tests that must pass:** TR-1 Tailspin clarification, TR-2 (pure code and end to end, before and after approval), **the reschedule lookup tests (W06 single match, several matches, no match giving a clarification and never a duplicate)**, TR-3 for drafts, **TR-10 including the injected later simulated clock for expiry**, TR-11, TR-12, TR-6 approve-twice, all earlier tests.
 - **Smoke test:** staging row 3.
 - **Commit points:** after each of 3a to 3f.
@@ -259,7 +259,7 @@ Goal: live adapters written from docs, disabled by default, contract-tested, nev
 | Dependency drift | Transitive packages are not pinned by us | `requirements.lock` from Slice 0; any change to it is a reviewed diff |
 | SQLite and the API | One file shared by the pipeline, calendar overlay, outbox and the API; concurrent writes | One writer at a time (a single run, OQ-14); transactions per step; decided and tested at 1b and 4c |
 | Scope creep (Teams agent, graphify, taste skill) | They have no unverified-free route in Phase 1 | Teams agent is last in Slice 4 and its deferral is a decision for you (4h); taste skill and graphify are reference only until you decide |
-| Uncommitted work piling up between commits | `plans/` and recent `decisions.md` edits are not in git; you make all commits | Every sub-slice has a commit point; at each I show `git status` and a proposed message and wait; you tag `docs-baseline` before Slice 0 |
+| Uncommitted work piling up between commits | edits made after the `docs-baseline` commit (`plans/`, `prompts/`, `tools/`, skills, docs, `decisions.md`) are not in git; you make all commits | Every sub-slice has a commit point; at each I show `git status` and a proposed message and wait; the `docs-baseline` tag already exists |
 
 ## 12. What is deliberately not in this plan
 
