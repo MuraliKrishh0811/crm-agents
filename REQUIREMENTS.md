@@ -19,20 +19,20 @@ Status: Phase 1, local-only (no Microsoft 365 or Azure access yet).
 
 ## 1. Hard rules (non-negotiable)
 
-| ID | Rule |
-|---|---|
-| R1 | **Real code only.** All providers, agents, and framework calls are real implementations. Never hardcode responses, never stub an agent or API call to make a demo or test pass. |
-| R2 | **Provider interfaces.** Agents never call Microsoft Graph, Azure OpenAI, Ollama, the file system, or a specific database directly. They use the four interfaces in section 6. |
-| R3 | **Local mode is the default and the only mode that runs in Phase 1.** Live providers (Graph, Azure OpenAI) are written from documentation, disabled by default, refuse to start without configuration, and are labeled `implemented, unverified`. |
-| R4 | **Deterministic scheduling.** Time zone conversion, availability intersection, duration, working-hours, and blocking rules are plain code. The language model is used only for understanding text (classification, extraction, summaries) and drafting text. |
-| R5 | **Human approval.** Nothing is booked, updated, or sent without an explicit approval action from a person. |
-| R6 | **Idempotency.** Every write is safe to repeat. Key emails by Message-ID, meetings by iCalUId or a stable internal key. Reprocessing the same email must not create duplicate records. |
-| R7 | **Secrets.** Never read `.env`. Never put secrets in code, logs, tests, or docs. Provide `.env.example` listing every setting without values. Ensure `.env` is in `.gitignore`. |
-| R8 | **No test gaming.** Never special-case client names, email IDs, dates, or expected answers from the dataset in production code. Tests may read the answer key; production code must not. |
-| R9 | **Time.** Store all timestamps in UTC plus the relevant IANA time zone. Never use a fixed UTC offset to convert between regions (daylight-saving dates differ). |
-| R10 | **Label simulation.** Anything the local mode cannot truly produce (for example a Teams join link) must be explicitly marked as simulated in data and UI. |
-| R11 | **Test as you go.** Every slice ships with tests and passes the smoke test (section 13) before it is considered done. |
-| R12 | **Ask when blocked.** If live-service access, a decision, or documentation is missing, say so and stop on that item. Do not invent. |
+| ID  | Rule                                                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R1  | **Real code only.** All providers, agents, and framework calls are real implementations. Never hardcode responses, never stub an agent or API call to make a demo or test pass.                                                                              |
+| R2  | **Provider interfaces.** Agents never call Microsoft Graph, Azure OpenAI, Ollama, the file system, or a specific database directly. They use the four interfaces in section 6.                                                                               |
+| R3  | **Local mode is the default and the only mode that runs in Phase 1.** Live providers (Graph, Azure OpenAI) are written from documentation, disabled by default, refuse to start without configuration, and are labeled `implemented, unverified`.            |
+| R4  | **Deterministic scheduling.** Time zone conversion, availability intersection, duration, working-hours, and blocking rules are plain code. The language model is used only for understanding text (classification, extraction, summaries) and drafting text. |
+| R5  | **Human approval.** Nothing is booked, updated, or sent without an explicit approval action from a person.                                                                                                                                                   |
+| R6  | **Idempotency.** Every write is safe to repeat. Key emails by Message-ID, meetings by iCalUId or a stable internal key. Reprocessing the same email must not create duplicate records.                                                                       |
+| R7  | **Secrets.** Never read `.env`. Never put secrets in code, logs, tests, or docs. Provide `.env.example` listing every setting without values. Ensure `.env` is in `.gitignore`.                                                                              |
+| R8  | **No test gaming.** Never special-case client names, email IDs, dates, or expected answers from the dataset in production code. Tests may read the answer key; production code must not.                                                                     |
+| R9  | **Time.** Store all timestamps in UTC plus the relevant IANA time zone. Never use a fixed UTC offset to convert between regions (daylight-saving dates differ).                                                                                              |
+| R10 | **Label simulation.** Anything the local mode cannot truly produce (for example a Teams join link) must be explicitly marked as simulated in data and UI.                                                                                                    |
+| R11 | **Test as you go.** Every slice ships with tests and passes the smoke test (section 13) before it is considered done.                                                                                                                                        |
+| R12 | **Ask when blocked.** If live-service access, a decision, or documentation is missing, say so and stop on that item. Do not invent.                                                                                                                          |
 
 ---
 
@@ -46,6 +46,7 @@ A CRM-style application where AI agents read customer emails and calendars from 
 One-line description: a CRM that reads the inbox, understands where each customer stands, suggests the next action, and books the meeting.
 
 Platform direction:
+
 - Primary: Microsoft Graph, Microsoft Agent Framework with Azure OpenAI (GPT) models, Microsoft 365 Agents Toolkit (Teams), Azure AI Foundry.
 - Fallback (Phase 1, the working system): synthetic `.eml` emails, mock calendar JSON, local model via Ollama.
 
@@ -63,12 +64,14 @@ Platform direction:
 ## 4. Scope
 
 In scope:
+
 - Email ingestion, customer matching, stage classification, summaries, next actions.
 - Scheduling from customer-offered times, including conflicts, no-overlap counter-proposals, clarification requests, and rescheduling an existing meeting.
 - CRM API, web dashboard, human approval flow, audit trail.
 - Teams Copilot agent (see open decision D6 for timing).
 
 Out of scope:
+
 - Reading the external customer's own calendar (they are outside the organization; their availability comes only from their emails).
 - Autonomous sending or booking without approval.
 - Channels other than email.
@@ -80,13 +83,13 @@ Out of scope:
 
 Fixed enumeration in the domain model. Each CRM store adapter maps it to its own representation.
 
-| Stage | Definition |
-|---|---|
-| Initial Lead | First contact; no established two-way conversation yet. |
-| Engagement | Active two-way conversation, discovery, or arranging an intro/discovery call. |
+| Stage                  | Definition                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| Initial Lead           | First contact; no established two-way conversation yet.                                               |
+| Engagement             | Active two-way conversation, discovery, or arranging an intro/discovery call.                         |
 | Presentation/Follow-up | Demo, walkthrough, or proposal delivered, or a presentation meeting is confirmed; includes follow-up. |
-| Converted | Customer has committed (signed order form, purchase approval). |
-| Not Converted | Customer declined, chose another vendor, or closed; capture the reason when stated. |
+| Converted              | Customer has committed (signed order form, purchase approval).                                        |
+| Not Converted          | Customer declined, chose another vendor, or closed; capture the reason when stated.                   |
 
 Every stage change is recorded in a stage history (previous stage, new stage, timestamp, reason, source email).
 
@@ -138,12 +141,12 @@ CrmRepository
 
 Implementations:
 
-| Interface | Live (written, unverified in Phase 1) | Local (working in Phase 1) |
-|---|---|---|
-| MailProvider | Microsoft Graph | Reads `.eml` files, replays in date order against the simulated clock |
-| CalendarProvider | Microsoft Graph | Reads mock calendar JSON; also records meetings the system creates so later bookings see them |
-| ChatModelProvider | Azure OpenAI via Microsoft Agent Framework / Foundry | Ollama |
-| CrmRepository | Azure SQL or Dataverse (undecided) | SQLite |
+| Interface         | Live (written, unverified in Phase 1)                | Local (working in Phase 1)                                                                    |
+| ----------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| MailProvider      | Microsoft Graph                                      | Reads `.eml` files, replays in date order against the simulated clock                         |
+| CalendarProvider  | Microsoft Graph                                      | Reads mock calendar JSON; also records meetings the system creates so later bookings see them |
+| ChatModelProvider | Azure OpenAI via Microsoft Agent Framework / Foundry | Ollama                                                                                        |
+| CrmRepository     | Azure SQL or Dataverse (undecided)                   | SQLite                                                                                        |
 
 Configuration selects the implementation per provider. Optional: health-check fallback from live to local. Record the active provider for each call in the audit log.
 
@@ -152,6 +155,7 @@ Configuration selects the implementation per provider. Optional: health-check fa
 ## 7. Functional requirements
 
 ### Ingestion (Ingestion Agent)
+
 - `FR-ING-1` Normalize every email (live or `.eml`) into one internal `Email` object.
 - `FR-ING-2` Strip quoted earlier messages; analyze only the new text.
 - `FR-ING-3` Match an email to a customer using sender address, sender domain, CC contacts, and thread identifiers (Message-ID, In-Reply-To, References, conversation ID). New subject lines for an existing customer must still link by domain/contacts.
@@ -163,16 +167,19 @@ Configuration selects the implementation per provider. Optional: health-check fa
 - `FR-ING-9` Store attachment names/metadata with the email.
 
 ### Stage classification (Stage Classifier Agent)
+
 - `FR-CLS-1` Input: new email text plus customer history and current stage.
 - `FR-CLS-2` Output a schema-validated result: proposed stage, confidence, short reason, extracted facts (for example user count, current CRM, decision timeline, loss reason).
 - `FR-CLS-3` Do not change stage on an unanswered follow-up nudge or on historical dates mentioned in old emails.
 - `FR-CLS-4` Record the stage change and reason in stage history.
 
 ### Summary and next action
+
 - `FR-SUM-1` Update a running engagement summary after each email.
 - `FR-SUM-2` Propose a next action (description, optional due date). Examples: send deck, schedule intro call, answer questions, onboarding kickoff, re-engage in April.
 
 ### Scheduling (Scheduler Agent)
+
 - `FR-SCH-1` Detect scheduling intent in an email.
 - `FR-SCH-2` Extract the customer's offered windows into structured slots with explicit time zone, resolving relative dates ("next Thursday") and converting to UTC. Do not trigger scheduling from historical times in old emails.
 - `FR-SCH-3` If the request is vague (no concrete times), draft a clarification request and create nothing.
@@ -186,15 +193,18 @@ Configuration selects the implementation per provider. Optional: health-check fa
 - `FR-SCH-11` Include a human-readable reason for every accepted and rejected slot in the scheduling request record.
 
 ### Approval
+
 - `FR-APP-1` Present proposed slot(s), attendees, and the draft reply for approve / edit / reject.
 - `FR-APP-2` Only after approval: create or update the event, and send the confirmation draft.
 - `FR-APP-3` Record the approval decision, who made it, and when.
 
 ### CRM Writer
+
 - `FR-CRM-1` Persist all outcomes through `CrmRepository` only: stage changes, engagement entries, meetings, contacts, next actions, scheduling requests.
 - `FR-CRM-2` Meeting record includes event key, subject, UTC start/end, attendees, join link (marked simulated in local mode), status, customer response status.
 
 ### API and UI
+
 - `FR-API-1` One CRM API serves both UI surfaces and exposes customers, timelines, next actions, scheduling requests, approvals, and a trigger for the agent workflow.
 - `FR-UI-1` Dashboard pipeline view: customers grouped by stage.
 - `FR-UI-2` Customer detail: stage, contacts, engagement timeline (emails and meetings), next action.
@@ -203,6 +213,7 @@ Configuration selects the implementation per provider. Optional: health-check fa
 - `FR-UI-5` Teams Copilot agent offers conversational access to the same API ("where does Fabrikam stand?", "what are my next actions this week?").
 
 ### Audit and configuration
+
 - `FR-AUD-1` Record every agent run: agent, input reference, output, provider and model, timestamp, duration, approval decision.
 - `FR-CFG-1` Provider selection and all settings come from configuration. See `.env.example` keys in section 14.
 
@@ -210,17 +221,17 @@ Configuration selects the implementation per provider. Optional: health-check fa
 
 ## 8. Scheduling policy (source of truth: `config/team.json`)
 
-| Setting | Value |
-|---|---|
-| Organization time zone | `America/Chicago` |
-| Internal working hours | 08:00 to 17:00, Monday to Friday |
-| Slot granularity | 30 minutes |
-| Default durations (minutes) | intro 30, discovery 30, demo 60, walkthrough 60, kickoff 60 |
-| Hard blocking | `busy`, `oof` |
-| Soft blocking | `tentative` (usable only as a lower-ranked fallback, always shown with a warning, never silently ignored) |
-| Non-blocking | `free`, `workingElsewhere` |
-| Max suggestions | 3 |
-| Human approval | always required |
+| Setting                     | Value                                                                                                     |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Organization time zone      | `America/Chicago`                                                                                         |
+| Internal working hours      | 08:00 to 17:00, Monday to Friday                                                                          |
+| Slot granularity            | 30 minutes                                                                                                |
+| Default durations (minutes) | intro 30, discovery 30, demo 60, walkthrough 60, kickoff 60                                               |
+| Hard blocking               | `busy`, `oof`                                                                                             |
+| Soft blocking               | `tentative` (usable only as a lower-ranked fallback, always shown with a warning, never silently ignored) |
+| Non-blocking                | `free`, `workingElsewhere`                                                                                |
+| Max suggestions             | 3                                                                                                         |
+| Human approval              | always required                                                                                           |
 
 Read the values from `config/team.json`; do not hardcode them.
 
@@ -254,23 +265,23 @@ Internal company: Contoso (`contoso.com`). Team: Sarah Mitchell (Account Executi
 
 ### Customer outcomes
 
-| Customer | Team | Final stage | What must happen |
-|---|---|---|---|
-| Fabrikam | Sarah + Raj | Converted | Full lifecycle. New-subject emails link to the same customer. Duplicate email (`F08b`, same Message-ID as `F08`) creates no second record. Next action: onboarding kickoff Oct 27 09:00 CT (already scheduled). |
-| Northwind Traders | Sarah + David | Not Converted | Unanswered nudge causes no stage change. Loss reason captured (competitor bundled with ERP, tighter budget). Next action: re-engage April 2027. |
-| Adventure Works Cycles | Emily + Raj | Engagement | Scheduling scenario SCH-ADV. Capture 60 users, Dynamics 365, decision by end of Q4. Add Sophie Turner as contact. |
-| Tailspin Toys | Sarah + David | Engagement | First email is vague: request clarification, do not guess. Then scenario SCH-TAIL. |
-| Wingtip Toys | Emily + David | Presentation/Follow-up | Existing Oct 22 walkthrough. Scenario SCH-WING. Add Lisa Park as contact. |
-| Noise (internal HR all-staff) | - | - | Ignored; no CRM record. |
+| Customer                      | Team          | Final stage            | What must happen                                                                                                                                                                                                |
+| ----------------------------- | ------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fabrikam                      | Sarah + Raj   | Converted              | Full lifecycle. New-subject emails link to the same customer. Duplicate email (`F08b`, same Message-ID as `F08`) creates no second record. Next action: onboarding kickoff Oct 27 09:00 CT (already scheduled). |
+| Northwind Traders             | Sarah + David | Not Converted          | Unanswered nudge causes no stage change. Loss reason captured (competitor bundled with ERP, tighter budget). Next action: re-engage April 2027.                                                                 |
+| Adventure Works Cycles        | Emily + Raj   | Engagement             | Scheduling scenario SCH-ADV. Capture 60 users, Dynamics 365, decision by end of Q4. Add Sophie Turner as contact.                                                                                               |
+| Tailspin Toys                 | Sarah + David | Engagement             | First email is vague: request clarification, do not guess. Then scenario SCH-TAIL.                                                                                                                              |
+| Wingtip Toys                  | Emily + David | Presentation/Follow-up | Existing Oct 22 walkthrough. Scenario SCH-WING. Add Lisa Park as contact.                                                                                                                                       |
+| Noise (internal HR all-staff) | -             | -                      | Ignored; no CRM record.                                                                                                                                                                                         |
 
 ### Scheduling scenarios (all times Oct 2026; CT = America/Chicago)
 
 **SCH-ADV (Adventure Works, 60 min, trigger email A05, client in London)**
 
-| Customer window | In CT | Result |
-|---|---|---|
-| Tue Oct 20, 15:00-17:00 BST | 09:00-11:00 | Rejected: Emily busy until 10:30 |
-| Wed Oct 21, 14:00-15:30 BST | 08:00-09:30 | Only a fallback with warning: Raj tentative 08:30-09:00 |
+| Customer window             | In CT       | Result                                                                                  |
+| --------------------------- | ----------- | --------------------------------------------------------------------------------------- |
+| Tue Oct 20, 15:00-17:00 BST | 09:00-11:00 | Rejected: Emily busy until 10:30                                                        |
+| Wed Oct 21, 14:00-15:30 BST | 08:00-09:30 | Only a fallback with warning: Raj tentative 08:30-09:00                                 |
 | Tue Oct 27, 14:00-16:00 GMT | 09:00-11:00 | **Selected: 10:00-11:00 CT (15:00-16:00 GMT).** Raj busy 09:00-10:00 (Fabrikam kickoff) |
 
 Expected action: `recommend_slots`, then (after approval) create a Teams meeting, stage to Presentation/Follow-up, attendees Emily, Raj, Oliver Bennett, Sophie Turner.
@@ -278,19 +289,19 @@ Trap: the UK leaves summer time on Oct 25; the US stays on daylight time until N
 
 **SCH-TAIL (Tailspin Toys, 30 min, trigger email T03, client in Denver)**
 
-| Customer window | In CT | Result |
-|---|---|---|
+| Customer window             | In CT       | Result                                |
+| --------------------------- | ----------- | ------------------------------------- |
 | Mon Oct 19, 09:00-10:00 MDT | 10:00-11:00 | Rejected: Sarah out of office all day |
-| Thu Oct 22, 08:00-09:00 MDT | 09:00-10:00 | Rejected: David busy 08:30-10:00 |
+| Thu Oct 22, 08:00-09:00 MDT | 09:00-10:00 | Rejected: David busy 08:30-10:00      |
 
 Expected action: `counter_propose`. No meeting is created. Draft a reply with 2 or 3 mutual morning slots (customer's mornings are 08:00-12:00 MDT, 09:00-13:00 CT), displayed in Mountain time, none on Oct 19. Valid examples: Oct 20 10:00 CT, Oct 21 09:00 CT, Oct 22 10:00 CT (30 minutes each).
 
 **SCH-WING (Wingtip Toys, 60 min, trigger email W06, client in New York)**
 
-| Customer window | In CT | Result |
-|---|---|---|
+| Customer window             | In CT                                 | Result                                                                            |
+| --------------------------- | ------------------------------------- | --------------------------------------------------------------------------------- |
 | Wed Oct 21, after 15:00 EDT | 14:00-17:00 (capped at working hours) | Rejected: Emily busy 14:00-15:30 and David busy 15:30-16:30 leave only 30 minutes |
-| Fri Oct 23, 11:00-13:00 EDT | 10:00-12:00 | **Selected: 10:00-11:00 CT (11:00-12:00 EDT).** |
+| Fri Oct 23, 11:00-13:00 EDT | 10:00-12:00                           | **Selected: 10:00-11:00 CT (11:00-12:00 EDT).**                                   |
 
 Expected action: `update_existing_meeting`. Update the event with key `wingtip-walkthrough-20261022` (currently Oct 22 13:00-14:00 CT) and add `lisa.park@wingtiptoys.com`. Create no second event.
 Traps: David's "Lunch" 11:30-12:30 is `showAs: free` and must not block. Raj is out of office on Oct 23 but is not on this meeting and must not block.
@@ -311,21 +322,22 @@ Traps: David's "Lunch" 11:30-12:30 is `showAs: free` and must not block. Raj is 
 
 Verify every item against current official documentation before coding it. Do not assume names or permissions from memory.
 
-| Need | Intended approach |
-|---|---|
-| Detect new mail | Graph change-notification subscriptions on the Inbox (renew before expiry on a timer), plus message delta query as a polling safety net |
-| Read a message | Graph get message (sender, recipients, subject, body, thread identifiers, attachments) |
+| Need                  | Intended approach                                                                                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Detect new mail       | Graph change-notification subscriptions on the Inbox (renew before expiry on a timer), plus message delta query as a polling safety net                                                 |
+| Read a message        | Graph get message (sender, recipients, subject, body, thread identifiers, attachments)                                                                                                  |
 | Internal availability | Graph calendar `getSchedule` (free/busy) or `findMeetingTimes`; prefer `getSchedule` plus intersection in code because it is testable. Confirm supported permission types for each call |
-| Create meeting | Graph create event with online meeting (Teams), customer as external attendee |
-| Update meeting | Graph update event (move time, add attendee) |
-| Reply in thread | Graph `createReply` draft, then send after approval |
-| Customer response | Meeting-response messages in the inbox, or attendee response status on the event |
+| Create meeting        | Graph create event with online meeting (Teams), customer as external attendee                                                                                                           |
+| Update meeting        | Graph update event (move time, add attendee)                                                                                                                                            |
+| Reply in thread       | Graph `createReply` draft, then send after approval                                                                                                                                     |
+| Customer response     | Meeting-response messages in the inbox, or attendee response status on the event                                                                                                        |
 
 Authentication plan (to finalize with IT): app-only (application permissions) for background mail ingestion and availability, restricted to the sales team's mailboxes via an Exchange application access policy; delegated/on-behalf-of for creating meetings as the signed-in user. Entra ID for auth. Prefer managed identity over stored secrets.
 
 Agents/model: Microsoft Agent Framework with Azure OpenAI GPT models through Azure AI Foundry. Teams agent via Microsoft 365 Agents Toolkit.
 
 Provide:
+
 - Contract tests for the live providers using sample responses shaped like real service output. Label them contract tests, not live verification.
 - A `first_day_with_access.md` checklist listing exactly what to verify once a real tenant is available.
 
@@ -335,17 +347,17 @@ Provide:
 
 All tests live in a dedicated `tests/` folder.
 
-| ID | Area | Requirement |
-|---|---|---|
-| `TR-1` | Agents, exact-match | Stage after every email matches `expected_outcomes.json`; customer matching; duplicate ignored; noise ignored; clarification requested for the vague Tailspin email. |
-| `TR-2` | Scheduling, exact-match | Each scenario (SCH-ADV, SCH-TAIL, SCH-WING) produces the expected outcome type and slots from section 10, including the DST trap and the non-blocking `free` event. |
-| `TR-3` | Agents, qualitative | Summaries and drafted replies scored against a written rubric (accuracy, completeness, tone, no invented facts). Use only for outputs with no single right answer. |
-| `TR-4` | Backend | curl commands (and scripted equivalents) for every CRM API endpoint. |
-| `TR-5` | Frontend | Playwright scripts for pipeline view, customer timeline, scheduling panel, and the approve/edit/reject flow. |
-| `TR-6` | Idempotency | Replaying the full email set twice yields identical CRM state. |
-| `TR-7` | Contract | Live Graph and Azure OpenAI providers tested against sample responses; labeled contract tests. |
-| `TR-8` | Model accuracy | Report stage-classification accuracy per run against the answer key. |
-| `TR-9` | Smoke | See below. |
+| ID     | Area                    | Requirement                                                                                                                                                          |
+| ------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TR-1` | Agents, exact-match     | Stage after every email matches `expected_outcomes.json`; customer matching; duplicate ignored; noise ignored; clarification requested for the vague Tailspin email. |
+| `TR-2` | Scheduling, exact-match | Each scenario (SCH-ADV, SCH-TAIL, SCH-WING) produces the expected outcome type and slots from section 10, including the DST trap and the non-blocking `free` event.  |
+| `TR-3` | Agents, qualitative     | Summaries and drafted replies scored against a written rubric (accuracy, completeness, tone, no invented facts). Use only for outputs with no single right answer.   |
+| `TR-4` | Backend                 | curl commands (and scripted equivalents) for every CRM API endpoint.                                                                                                 |
+| `TR-5` | Frontend                | Playwright scripts for pipeline view, customer timeline, scheduling panel, and the approve/edit/reject flow.                                                         |
+| `TR-6` | Idempotency             | Replaying the full email set twice yields identical CRM state.                                                                                                       |
+| `TR-7` | Contract                | Live Graph and Azure OpenAI providers tested against sample responses; labeled contract tests.                                                                       |
+| `TR-8` | Model accuracy          | Report stage-classification accuracy per run against the answer key.                                                                                                 |
+| `TR-9` | Smoke                   | See below.                                                                                                                                                           |
 
 **Smoke test** (run after every slice, must pass before moving on): start the system in local mode; replay all emails; assert each customer reaches its final stage from section 10; assert the three scheduling scenarios produce their expected outcomes; assert no duplicate records exist.
 
@@ -354,6 +366,7 @@ All tests live in a dedicated `tests/` folder.
 ## 14. Non-functional requirements
 
 **Security**
+
 - Never read `.env`. Add deny rules for `.env` in the coding tool's permission settings in addition to the rule here, because an instruction alone is only a request.
 - `.env` is git-ignored. `.env.example` lists every key without values.
 - No secrets in code, logs, test fixtures, or docs.
@@ -369,16 +382,15 @@ All tests live in a dedicated `tests/` folder.
 
 ## 15. Open decisions (ask the user before coding)
 
-| ID | Decision | Options | Suggested default (user has NOT confirmed) |
-|---|---|---|---|
-| D1 | Backend language and framework | Python, .NET (Microsoft Agent Framework supports more than one language) | Ask. Python is a reasonable default for Ollama and fast iteration |
-| D2 | Frontend framework | React, others | React |
-| D3 | Live CRM store | Azure SQL, Dataverse, other | SQLite locally; defer live choice behind `CrmRepository` |
-| D4 | Coding agent / instruction files | Claude Code (`CLAUDE.md`), others | Claude Code |
-| D5 | Local Ollama model size | Depends on machine RAM and GPU | Ask for RAM/GPU first, then choose |
-| D6 | Teams Copilot agent timing | First release or after dashboard | After the web dashboard |
-| D7 | Exact Graph permission set and approver | To be agreed with IT | Document needs; do not assume |
-| D8 | Live hosting target | Not chosen | Out of Phase 1 |
+| ID  | Decision                                | Options                                                                      | Status / default                                                  |
+| --- | --------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------- | --- | --- | -------------------------- | -------------------------------- | ----------------------- |
+| D1  | Backend language and framework          | Python, .NET (Microsoft Agent Framework supports more than one language)     | Ask. Python is a reasonable default for Ollama and fast iteration |
+| D2  | Frontend framework                      | React, others                                                                | React                                                             |
+| D3  | Live CRM store                          | Azure SQL, Dataverse, other                                                  | SQLite locally; defer live choice behind `CrmRepository`          |
+| D4  | Coding agent / instruction files        | Claude Code (`CLAUDE.md`), others                                            | Claude Code                                                       |
+| D5  | Local Ollama model                      | RESOLVED: llama3.1:8b on MacBook Air M4, 16 GB RAM (see inputs/decisions.md) | Compare qwen3:8b against it using TR-8                            |     | D6  | Teams Copilot agent timing | First release or after dashboard | After the web dashboard |
+| D7  | Exact Graph permission set and approver | To be agreed with IT                                                         | Document needs; do not assume                                     |
+| D8  | Live hosting target                     | Not chosen                                                                   | Out of Phase 1                                                    |
 
 ---
 
