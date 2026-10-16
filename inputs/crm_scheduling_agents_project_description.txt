@@ -1,0 +1,846 @@
+================================================================================
+PROJECT DESCRIPTION
+CRM ENGAGEMENT TRACKING AND INTELLIGENT SCHEDULING AGENTS
+Built on the Microsoft ecosystem, with full local fallbacks
+================================================================================
+
+Document purpose
+----------------
+This document describes the project in full: what is being built, why, how it is
+structured, how data and decisions flow through it, how it will be tested, and
+what is still undecided. It is written so that a developer, a coding agent, or a
+non-technical stakeholder can read it and understand the intended system without
+any other context. It is based on the project requirements, the architecture
+diagram ("CRM and Scheduling Agent"), and the synthetic dataset already prepared.
+
+
+--------------------------------------------------------------------------------
+1. PROJECT SUMMARY
+--------------------------------------------------------------------------------
+
+The project is a CRM-style application that tracks customers and leads through
+their engagement lifecycle, and automates meeting scheduling, using AI agents
+that work directly on the emails and calendars the sales team already has in
+Microsoft 365 (Outlook).
+
+In one sentence: a CRM that reads the inbox, understands where each customer
+stands, suggests what to do next, and books the meeting.
+
+The system does two main jobs:
+
+  1. CRM and engagement tracking
+     It reads customer emails and keeps an up-to-date record of every customer:
+     their current stage, their full engagement history, and the next action.
+
+  2. Intelligent scheduling
+     When a customer offers meeting times by email, the system checks the
+     availability of the relevant internal team members, finds common free
+     slots, proposes them for human approval, and (once approved) creates the
+     Outlook/Teams meeting and records it in the CRM.
+
+The organization is fully on the Microsoft ecosystem: all emails live in Outlook
+under the organization's Microsoft 365 tenant, and the CRM application is
+intended to use the APIs Microsoft provides (Microsoft Graph) to fetch data.
+
+Current phase constraint
+------------------------
+At present there are NO permissions or access to Microsoft 365, Microsoft Graph,
+Microsoft Entra ID, or Azure OpenAI. Therefore the system is first built and
+demonstrated entirely on fallbacks:
+
+  - Synthetic emails (.eml files) in place of Outlook mail
+  - A mock calendar (JSON) in place of Outlook calendars
+  - A local model served by Ollama in place of Azure OpenAI
+
+The architecture is designed so that moving from fallback to the real Microsoft
+services is a configuration change, not a rebuild.
+
+
+--------------------------------------------------------------------------------
+2. GOALS AND NON-GOALS
+--------------------------------------------------------------------------------
+
+Goals
+-----
+  - Track every customer/lead through these stages:
+        Initial Lead -> Engagement -> Presentation/Follow-up ->
+        Converted / Not Converted
+  - Give visibility into each customer's current status, engagement history, and
+    next action.
+  - Let the customer supply their available times (by email), check internal
+    team availability, suggest common slots, and on confirmation create the
+    Outlook/Teams meeting and record the engagement in the CRM.
+  - Use a multi-agent design in which small agents each do one job, coordinated
+    by an orchestrator.
+  - Use Microsoft Agent Framework with Azure OpenAI GPT models as the primary
+    agent/model stack, with an Ollama-based local model as the fallback.
+  - Use Microsoft Graph API as the primary data source, with synthetic data as
+    the fallback.
+  - Keep a human in control: nothing is booked or sent without approval.
+  - Make every agent decision auditable.
+  - Be demonstrable to non-technical stakeholders and testable by developers.
+
+Non-goals (for this project)
+----------------------------
+  - Checking the external customer's own calendar. Customers are outside the
+    organization, so their availability comes only from what they write in
+    their emails.
+  - Sending emails or booking meetings autonomously without human approval.
+  - Replacing a full enterprise CRM product. This is a focused prototype that
+    shows the lifecycle tracking and scheduling workflow end to end.
+  - Handling channels other than email (for example phone, chat, or web forms).
+
+
+--------------------------------------------------------------------------------
+3. USERS AND ACTORS
+--------------------------------------------------------------------------------
+
+  Salesperson / Account Executive
+      The main user. Reviews the pipeline, reads customer timelines, approves
+      proposed meeting slots and draft replies.
+
+  Solutions Engineer
+      Internal team member who joins technical demos and walkthroughs. Their
+      calendar is checked for scheduling.
+
+  Sales manager / leadership
+      Views the pipeline and overall status.
+
+  External client (customer or lead)
+      Never uses the system directly and does not need Microsoft 365. They only
+      send and receive ordinary email and meeting invitations. Their
+      availability enters the system through their emails.
+
+  The system itself (agents)
+      A set of cooperating software agents that read, classify, summarize,
+      schedule, and write CRM records.
+
+
+--------------------------------------------------------------------------------
+4. CUSTOMER LIFECYCLE STAGES
+--------------------------------------------------------------------------------
+
+Every customer is in exactly one stage at a time. Stage changes are recorded in
+a stage history so that the path a customer took is visible.
+
+  Initial Lead
+      First contact. No established two-way conversation yet.
+
+  Engagement
+      Active two-way conversation, discovery, or arranging an intro/discovery
+      call.
+
+  Presentation/Follow-up
+      A demo, walkthrough, or proposal has been delivered, or a presentation
+      meeting is confirmed. Includes follow-up conversation afterward.
+
+  Converted
+      The customer has committed (signed order form, purchase approval, etc.).
+
+  Not Converted
+      The customer has declined, chosen another vendor, or the opportunity has
+      been closed. The reason is captured when stated.
+
+Stage assignment is made by the Stage Classifier agent from the email content
+and the customer's history, with a confidence value and a short reason. The
+final stage and next action are always visible to the salesperson.
+
+
+--------------------------------------------------------------------------------
+5. ARCHITECTURE OVERVIEW
+--------------------------------------------------------------------------------
+
+The architecture (see the architecture diagram) has these groups:
+
+  UI
+      Web Dashboard
+      Teams Copilot Agent
+
+  Backend
+      CRM API
+      Agent Orchestrator
+      Ingestion Agent
+      Stage Classifier Agent
+      Summary and Next Action Agent
+      Scheduler Agent
+      CRM Writer Agent
+
+  Providers (the abstraction layer)
+      Mail Provider
+      Calendar Provider
+      Chat Model Provider
+      CRM Repository
+
+  Primary Sources (live Microsoft/Azure services)
+      Microsoft Graph
+      Exchange Online
+      Azure OpenAI (via Foundry)
+      Entra ID
+
+  Fallback Sources (local)
+      Synthetic EML emails
+      Mock Calendar (JSON)
+      Ollama Local model
+
+  Data
+      CRM Store (Azure SQL, Dataverse, or SQLite, behind an adapter)
+      Audit and Trace Store
+
+  Observability
+      App Insights
+
+  External actor
+      External Client (communicates by email only)
+
+Core design principle: every external dependency sits behind a provider
+interface, selected by configuration. The agents never talk to Microsoft Graph,
+Azure OpenAI, Ollama, or a specific database directly. They talk to interfaces.
+This single decision is what makes the fallback strategy work and keeps the
+system testable.
+
+5.1 Provider abstraction layer
+------------------------------
+  Mail Provider
+      Interface for reading emails (and creating reply drafts). Two
+      implementations: Microsoft Graph (primary) and a local reader of the
+      synthetic .eml files (fallback). Both return the same standard internal
+      "Email" object.
+
+  Calendar Provider
+      Interface for reading free/busy and events, creating events, and
+      updating events. Two implementations: Microsoft Graph (primary) and a
+      local calendar store backed by the mock calendar JSON (fallback). The
+      local implementation also records meetings the system creates, so that a
+      later booking can detect a conflict with an earlier one.
+
+  Chat Model Provider
+      Interface for calling the language model. Two implementations: Azure
+      OpenAI GPT models through Microsoft Agent Framework / Foundry (primary)
+      and a local model served by Ollama (fallback).
+
+  CRM Repository
+      Interface for all CRM reads and writes (customers, contacts, emails,
+      engagements, meetings, stage history, next actions, and named queries for
+      the dashboard). Implementations (adapters) can be Azure SQL, Dataverse,
+      or SQLite. The CRM store choice is not finalized, so the agents must only
+      depend on this interface.
+
+5.2 Provider selection and fallback
+-----------------------------------
+  - A configuration setting chooses the provider mode: "live" or "local".
+  - In the current phase the default and only working mode is "local".
+  - The live providers (Graph, Azure OpenAI) are implemented from official
+    documentation but are disabled by default and are labeled "implemented,
+    unverified" until tested with real access.
+  - Optionally, an automatic health-check fallback can switch from live to local
+    when a live service is unavailable. The active provider for each component
+    is recorded in the audit log.
+
+
+--------------------------------------------------------------------------------
+6. COMPONENT DESCRIPTIONS
+--------------------------------------------------------------------------------
+
+6.1 User interface
+------------------
+  Web Dashboard
+      - Pipeline view: customers grouped by stage.
+      - Customer detail: current stage, contacts, engagement timeline (emails
+        and meetings), next action.
+      - Scheduling panel: parsed customer time windows, availability results,
+        proposed slots, draft reply, Approve / Edit / Reject.
+      - Audit view: what each agent decided and why.
+
+  Teams Copilot Agent
+      - Conversational access to the same backend, for example "where does
+        Fabrikam stand?" or "what are my next actions this week?".
+      - Built with the Microsoft 365 Agents Toolkit. Both UI surfaces call the
+        same CRM API, so there is one source of truth.
+
+6.2 CRM API
+-----------
+  The single backend entry point for both UI surfaces. It exposes customer and
+  engagement data, triggers the agent workflow, receives approvals, and returns
+  results. It hands work to the Agent Orchestrator and reads/writes through the
+  CRM Repository.
+
+6.3 Agent Orchestrator
+----------------------
+  Coordinates the agents in order, passes data between them, handles retries and
+  failures, enforces the human-approval step, and writes the audit trail. Built
+  with Microsoft Agent Framework.
+
+6.4 Agents
+----------
+  Ingestion Agent
+      - Reads a new email through the Mail Provider.
+      - Normalizes it into the standard internal Email object.
+      - Removes quoted earlier messages so only the new text is analyzed.
+      - Matches the email to a customer (by sender address, sender domain, CC
+        contacts, and thread information such as Message-ID, In-Reply-To,
+        References, and conversation ID). Creates a new lead if none matches.
+      - Ignores duplicates (same Message-ID) and unrelated/internal emails.
+      - Passes any customer-offered meeting times on to the Scheduler Agent.
+
+  Stage Classifier Agent
+      - Input: the new email plus the customer's history and current stage.
+      - Output: structured result with proposed stage, confidence, reason, and
+        any extracted facts (for example number of users, current CRM,
+        decision timeline, or loss reason).
+      - Uses the Chat Model Provider.
+
+  Summary and Next Action Agent
+      - Updates the running engagement summary.
+      - Proposes the next action (for example "send presentation deck",
+        "schedule intro call", "re-engage in April").
+      - Uses the Chat Model Provider.
+
+  Scheduler Agent
+      - Detects scheduling intent in an email.
+      - Extracts the customer's offered windows into structured slots, with
+        explicit time zone and resolved dates (for example "next Thursday",
+        "mornings"). Asks a clarifying question instead of guessing when the
+        request is vague.
+      - Chooses the internal attendees from assignment rules (account owner and
+        a solutions engineer) and adds relevant CC'd customer contacts.
+      - Checks internal availability through the Calendar Provider.
+      - Computes the overlap in plain code (not in the language model),
+        applies duration and working-hour rules, and ranks results.
+      - Produces one of: recommended slot(s), a counter-proposal when no
+        overlap exists, a clarification request, or an update to an existing
+        meeting (reschedule).
+      - Prepares the draft reply and the meeting details for human approval.
+
+  CRM Writer Agent
+      - Writes all outcomes to the CRM through the CRM Repository: stage
+        changes, engagement entries, meetings, contacts, next actions.
+      - Operations are idempotent (keyed, for example, by email Message-ID) so
+        retries never create duplicate records.
+
+6.5 Data stores
+---------------
+  CRM Store
+      Holds the CRM records. The product (Azure SQL, Dataverse, SQLite) is
+      undecided. SQLite is the natural choice for the local phase.
+
+  Audit and Trace Store
+      Records every agent run: which agent, which inputs, which output, which
+      provider and model were used, timing, and the approval decision. This
+      supports accountability and debugging.
+
+6.6 Observability
+-----------------
+  App Insights collects telemetry from the backend. Tracing from the agent
+  framework/Foundry can add per-agent visibility. In the local phase,
+  equivalent structured logs are sufficient.
+
+
+--------------------------------------------------------------------------------
+7. END-TO-END WORKFLOW
+--------------------------------------------------------------------------------
+
+The example uses a hypothetical contact, Priya, writing to a sales rep.
+
+Step 1  A new email arrives
+    Live mode: Microsoft Graph notifies the system of a new message through a
+    change-notification subscription, with a delta query as a polling safety
+    net. Subscriptions expire and must be renewed on a timer.
+    Local mode: a replay mechanism feeds the synthetic .eml files to the system
+    in date order against a simulated clock, so the system behaves as if mail
+    arrives one message at a time.
+
+Step 2  Ingestion
+    The Ingestion Agent reads the email, strips quoted history, deduplicates,
+    filters unrelated mail, and links it to the right customer (or creates a
+    new lead). The raw email is stored idempotently.
+
+Step 3  Classification
+    The Stage Classifier Agent proposes the customer's stage with a confidence
+    and reason.
+
+Step 4  Summary and next action
+    The Summary and Next Action Agent updates the summary and suggests the next
+    step.
+
+Step 5  Scheduling (only if the customer offered times or asked to meet)
+    a. Parse the customer's windows into structured slots in UTC plus the
+       customer's own time zone.
+    b. Select internal attendees.
+    c. Read availability from the Calendar Provider for those attendees.
+    d. Intersect in code, apply rules (see section 9), and rank.
+    e. Outcomes:
+         - Overlap found: propose up to three slots.
+         - No overlap: draft a reply offering mutual slots in the customer's
+           time zone; create no meeting.
+         - Vague request: draft a clarifying question.
+         - Existing meeting to move: prepare an update to that meeting and add
+           any new attendee; do not create a duplicate.
+
+Step 6  Human approval
+    The salesperson reviews the proposed slot, attendees, and draft reply on the
+    dashboard (or in Teams) and approves, edits, or rejects. Nothing is booked
+    or sent before this step.
+
+Step 7  Create or update the meeting
+    On approval, the Calendar Provider creates (or updates) the event with the
+    customer as an external attendee and, in live mode, a Teams online meeting.
+    A confirmation reply draft is prepared in the existing thread.
+
+Step 8  Record in the CRM
+    The CRM Writer Agent records the meeting, updates the stage if appropriate
+    (for example to Presentation/Follow-up), and sets the next action.
+
+Step 9  Responses and later emails
+    The customer's accept/decline, follow-ups, and later emails flow back
+    through the same cycle, eventually moving the customer to Converted or Not
+    Converted.
+
+
+--------------------------------------------------------------------------------
+8. HANDLING EXTERNAL CUSTOMERS' AVAILABILITY
+--------------------------------------------------------------------------------
+
+Customers are outside the organization, so the system cannot see their
+calendars (cross-organization free/busy requires special federation and is
+unreliable). The design treats the customer's availability as input rather than
+something to look up:
+
+  - The customer states their availability in an email.
+  - The Scheduler Agent parses it into structured slots, resolving relative
+    dates and time zones.
+  - Only internal calendars are read from Microsoft Graph (live) or from the
+    mock calendar (local).
+  - The overlap of the two sets is computed in code.
+  - The customer is invited as an external attendee; Teams meetings allow
+    external join by link, so no Microsoft 365 account is needed.
+  - Their acceptance returns by email and is ingested like any other message.
+
+Edge cases the Scheduler must handle:
+  - No overlap: counter-propose internal slots instead of booking.
+  - Ambiguous times: ask for clarification.
+  - Open-ended windows ("any time after 3pm"): cap by internal working hours.
+  - Time zones and daylight-saving differences between regions.
+  - A customer asking to move an already-booked meeting.
+  - A new attendee added to the thread (for example their CTO or finance lead).
+
+
+--------------------------------------------------------------------------------
+9. SCHEDULING RULES AND POLICY
+--------------------------------------------------------------------------------
+
+  Organization time zone ............ America/Chicago (Central)
+  Internal working hours ............ 08:00 to 17:00, Monday to Friday
+  Slot granularity .................. 30 minutes
+  Default meeting durations ......... intro 30, discovery 30, demo 60,
+                                      walkthrough 60, kickoff 60 minutes
+  Calendar blocking rules
+      Hard blocking ................. busy, out of office
+      Soft blocking ................. tentative (usable as a fallback with a
+                                      warning, never silently ignored)
+      Non-blocking .................. free, working elsewhere
+  Maximum suggestions ............... 3
+  Human approval .................... always required
+
+Additional rules:
+  - Only the attendees assigned to that customer block the slot. A team member
+    who is not on the meeting (for example someone out of office on that day)
+    must not block it.
+  - All times are stored in UTC together with the customer's time zone and
+    converted for display.
+  - All overlap, duration, working-hour, and time zone calculations are done in
+    deterministic code, never by the language model. The model is used only for
+    understanding and drafting language.
+
+
+--------------------------------------------------------------------------------
+10. DATA MODEL (STORE-NEUTRAL)
+--------------------------------------------------------------------------------
+
+The domain model is defined in the application's own terms so that any CRM store
+adapter (Azure SQL, Dataverse, SQLite) can map it.
+
+  Customer
+      id, company name, email domain, current stage (fixed enumeration),
+      account owner, created date, loss reason (if Not Converted).
+
+  Contact
+      id, customer id, name, email address, role/title, time zone (if known).
+
+  EmailMessage
+      Message-ID, conversation/thread identifiers, direction (received or
+      sent), sender, recipients (to/cc), sent date and time zone, subject,
+      new body text (quoted history removed), attachment names.
+
+  Engagement
+      id, customer id, type (email, meeting, note), summary, timestamp, source
+      email or meeting reference.
+
+  Meeting
+      id, customer id, external event id / iCalUId, subject, start and end (UTC),
+      attendees (internal and external), join link (real in live mode,
+      explicitly marked simulated in local mode), status, customer response
+      status.
+
+  StageHistory
+      customer id, previous stage, new stage, timestamp, reason, source email.
+
+  NextAction
+      customer id, description, due date, status.
+
+  SchedulingRequest
+      customer id, trigger email, parsed customer slots, attendees considered,
+      evaluated results (accepted/rejected with reasons), proposed slots,
+      outcome type, approval status.
+
+  AgentRun / Audit entry
+      agent name, input reference, output, provider and model used, timestamp,
+      duration, approval decision.
+
+Named queries required by the dashboard (examples): customers by stage, stale
+leads, next actions due this week, full timeline for a customer.
+
+Stage values are a fixed enumeration in the domain model; each store adapter
+maps them to its own representation.
+
+
+--------------------------------------------------------------------------------
+11. MICROSOFT INTEGRATION (LIVE MODE)
+--------------------------------------------------------------------------------
+
+These are the intended live integrations. Exact endpoint names, permissions, and
+limits must be verified against current Microsoft documentation before use,
+because they cannot be exercised until access is granted.
+
+  Detect new mail
+      Microsoft Graph change-notification subscriptions on the Inbox, renewed
+      before they expire; message delta query as a polling safety net.
+
+  Read messages
+      Graph "get message" for sender, recipients, subject, body, thread
+      identifiers, and attachments.
+
+  Check internal availability
+      Graph calendar "getSchedule" for free/busy of the internal attendees, or
+      "findMeetingTimes" for ranked suggestions. Deterministic intersection in
+      code is preferred because it is testable; confirm the supported
+      permission types for each call.
+
+  Create the meeting
+      Graph "create event" with an online meeting enabled for Teams, the
+      customer as an external attendee, and the internal team.
+
+  Update a meeting
+      Graph "update event" to move a time or add an attendee.
+
+  Reply in thread
+      Graph "createReply" to create a draft in the existing thread, then send
+      after approval.
+
+  Read the customer's response
+      Meeting-response messages in the inbox, or the attendee response status
+      on the event.
+
+Authentication and permissions (to be finalized with IT):
+  - A mix of both models is planned.
+  - App-only (application permissions) for background mail ingestion and
+    availability lookups, restricted to the sales team's mailboxes through an
+    Exchange application access policy.
+  - Delegated / on-behalf-of for creating meetings as the signed-in user, which
+    keeps the audit trail clear.
+  - Entra ID provides authentication. Prefer managed identity over stored
+    secrets wherever Azure allows.
+
+Agent and model stack (live mode):
+  - Microsoft Agent Framework for the agents and orchestration.
+  - Azure OpenAI GPT models, accessed through Azure AI Foundry.
+  - The Microsoft 365 Agents Toolkit for the Teams Copilot agent.
+
+
+--------------------------------------------------------------------------------
+12. LOCAL FALLBACK MODE (CURRENT PHASE)
+--------------------------------------------------------------------------------
+
+Because no Microsoft access exists yet, the local mode is the working system.
+It is real code behind the same interfaces as the live providers.
+
+  Local Mail Provider
+      Reads the synthetic .eml files, replaying them in date order against a
+      simulated clock (2026-10-16 10:00 Central for the provided dataset).
+
+  Local Calendar Provider
+      Reads the mock calendar JSON (shaped like Microsoft Graph events). It also
+      records meetings the system creates, so later bookings see earlier ones.
+      Anything it cannot truly produce, such as a Teams join link, is explicitly
+      marked as simulated.
+
+  Local Chat Model Provider
+      Calls a local model served by Ollama. Small local models are less reliable
+      at structured output than hosted models, so:
+        - all scheduling and calendar logic stays in deterministic code;
+        - the model is used for classification, summaries, extraction, and
+          draft replies only;
+        - model outputs are validated against a schema and retried when
+          malformed;
+        - accuracy is measured against the answer key (section 14).
+      The local model choice (size) depends on the machine's RAM and whether a
+      GPU is available, and is not yet decided.
+
+  CRM store
+      SQLite is the natural local store, behind the CRM Repository interface.
+
+  What "no mocking" means in this project
+      All code is real: the provider implementations, the agent logic, and the
+      framework calls. Responses are never hardcoded, and no agent or API call is
+      stubbed out to make a demo pass. The synthetic data is test INPUT flowing
+      through real code paths; it is not fake logic.
+
+  Status of the live code
+      The Microsoft Graph and Azure OpenAI providers are written from official
+      documentation but cannot be run yet. They are disabled by default, refuse
+      to start without configuration, and are labeled "implemented, unverified".
+      They are covered by contract tests using sample responses shaped like real
+      Graph output; these tests are labeled as contract tests, not live
+      verification. A "first day with access" checklist lists what to verify
+      once a real tenant is available.
+
+
+--------------------------------------------------------------------------------
+13. SYNTHETIC DATASET
+--------------------------------------------------------------------------------
+
+The dataset contains realistic emails and calendars for a fictional internal
+company, Contoso (domain contoso.com, Central time), and five fictional
+customers. It is generated by a script (generate.py) which also validates the
+scheduling expectations.
+
+Folder layout
+  emails/<client>/*.eml        32 threaded emails (plain text and HTML parts,
+                               Outlook-style quoted replies, one attachment)
+  calendars/mock_calendars.json  Graph-style events and working hours for four
+                               internal users, covering Oct 19-30, 2026
+  config/team.json             team members, client-to-team assignment,
+                               scheduling policy
+  expected/expected_outcomes.json  ground truth: the stage after each email,
+                               expected actions, scheduling results, and traps
+  README.md                    scenario documentation
+
+Internal team
+  Sarah Mitchell ..... Account Executive
+  Emily Chen ......... Senior Account Executive
+  Raj Patel .......... Solutions Engineer
+  David Okafor ....... Solutions Engineer
+
+Customers and scenarios
+  Fabrikam (contact in Central time; team Sarah + Raj)
+      Full lifecycle ending in Converted. Includes a proposal attachment, new
+      subject lines on the same customer (must be linked by domain/contacts, not
+      only by thread), and an exact duplicate email (same Message-ID) that must
+      not create a second record.
+
+  Northwind Traders (Central; team Sarah + David)
+      Ends Not Converted. Includes an unanswered follow-up nudge, then a loss to
+      a competing tool bundled with the customer's ERP and a tighter budget. The
+      loss reason is captured and the next action is to re-engage in April.
+
+  Adventure Works Cycles (London; team Emily + Raj)
+      Currently in Engagement; scheduling scenario SCH-ADV. The customer offers
+      three windows in UK time and copies a finance lead. Window 1 fails
+      (Emily busy). Window 2 offers only a fallback because Raj is tentative.
+      Window 3 works: Tuesday Oct 27, 10:00-11:00 Central (15:00-16:00 GMT).
+      Trap: the UK leaves summer time on Oct 25 but the US stays on daylight
+      time until Nov 1, so the offset changes from 6 hours to 5 hours. A fixed
+      6-hour offset would produce a wrong, out-of-window time.
+
+  Tailspin Toys (Denver; team Sarah + David)
+      A new lead with a vague first request ("sometime next week, mornings"),
+      which should trigger a clarifying request, then two offered slots that both
+      fail (Sarah out of office; David in a workshop). Scenario SCH-TAIL: no
+      meeting may be created; the system drafts a counter-proposal with 2-3
+      mutual morning slots shown in Mountain time.
+
+  Wingtip Toys (New York; team Emily + David)
+      Presentation/Follow-up with a meeting already booked on Oct 22. The
+      customer asks to move it and adds their CTO. Scenario SCH-WING: offered
+      Wednesday afternoon fails; Friday Oct 23 works, 10:00-11:00 Central
+      (11:00-12:00 Eastern). The existing event must be updated (and the CTO
+      added), not duplicated. David's "Lunch" is marked free and must not block.
+      Raj is out of office that day but is not on this team and must not block.
+
+  Noise
+      An internal all-staff HR email that must be ignored and must create no CRM
+      record.
+
+General traps built into the data
+  - Replies contain quoted earlier messages; times and facts must come from the
+    new text only.
+  - New subjects (for example proposal or recap emails) start new threads for
+    an existing customer.
+  - Outbound (Sent Items) emails also update the CRM history.
+  - Historical times mentioned in old emails must not trigger scheduling.
+
+
+--------------------------------------------------------------------------------
+14. TESTING STRATEGY
+--------------------------------------------------------------------------------
+
+All tests live in a dedicated testing folder.
+
+  Frontend
+      Playwright scripts that drive the dashboard: pipeline view, customer
+      timeline, scheduling panel, and the approve/edit/reject flow.
+
+  Backend
+      curl commands (and scripted equivalents) against the CRM API endpoints.
+
+  Agents
+      Deterministic exact-match tests for everything with one right answer:
+      stage after each email, customer matching, duplicate handling, noise
+      filtering, slot intersection, time zones, calendar blocking rules, and
+      the correct outcome type for each scheduling scenario. These use
+      expected_outcomes.json as the answer key.
+      Qualitative scoring (scored against a rubric) only for outputs with no
+      single right answer: engagement summaries and drafted reply emails.
+
+  Smoke tests
+      A short end-to-end run after every change: start the system in local
+      mode, replay the emails, confirm customers reach their expected final
+      stages, and confirm the three scheduling scenarios produce their expected
+      outcomes.
+
+  Contract tests
+      For the live Graph and Azure OpenAI providers, using sample responses
+      shaped like real service output. Clearly labeled as contract tests.
+
+  Model accuracy tracking
+      Because the local model may be weaker, record stage-classification
+      accuracy against the answer key so the team can judge whether the local
+      model is good enough or a larger one is needed.
+
+
+--------------------------------------------------------------------------------
+15. SECURITY AND PRIVACY
+--------------------------------------------------------------------------------
+
+  - Secrets never live in the code or the repository. An example.env file lists
+    every setting without values; the real .env file is git-ignored.
+  - AI coding tools must never read the real .env file. This is stated in the
+    project's instruction files AND enforced with the coding tool's permission
+    deny rules, because instructions alone are only a request.
+  - Prefer managed identity over keys where Azure supports it.
+  - Graph application permissions are limited to the sales team's mailboxes.
+  - Human approval gates every outbound email and meeting.
+  - The audit store records what each agent did and why.
+  - Real customer mail should not be used for testing; the synthetic dataset
+    serves that purpose.
+  - Third-party helper skills (see section 17) should be read before
+    installation and checked against organizational policy.
+
+
+--------------------------------------------------------------------------------
+16. DEMONSTRATION VIEW (NON-TECHNICAL SUMMARY)
+--------------------------------------------------------------------------------
+
+For leadership and non-technical audiences the system can be explained in five
+sentences:
+
+  1. A customer emails us; the system reads it and updates the CRM.
+  2. It decides where the customer stands and suggests what to do next.
+  3. If the customer offers meeting times, it checks our team's calendars and
+     finds the times that work for everyone.
+  4. A salesperson approves, and the meeting is booked and recorded.
+  5. If nothing works, it drafts a reply with alternatives instead of guessing.
+
+A presentation deck (6-7 slides) and speaker notes have already been prepared
+for this purpose.
+
+
+--------------------------------------------------------------------------------
+17. PROJECT ARTIFACTS PLANNED FOR THE BUILD
+--------------------------------------------------------------------------------
+
+Before coding with an AI coding agent, the following files are to be generated
+from the requirements, architecture, and dataset, and reviewed as a set:
+
+  - A top-level instruction file for the coding agent (for example CLAUDE.md or
+    AGENTS.md) that points to the skills and states the rules.
+  - Skill files, which mention the "taste skill" for UI quality and "graphify"
+    for codebase context management, include documentation-based code snippets
+    for Microsoft Agent Framework with Azure OpenAI, Ollama, and Microsoft
+    Graph, and state the testing, smoke-testing, "real code only", Ollama
+    fallback, and "never read .env" rules.
+  - A docs folder: hld.md (high-level design), lld.md (low-level design),
+    demo.md (non-technical walkthrough), and others as needed.
+  - A testing folder structure (Playwright, curl, agent scoring, smoke tests).
+  - example.env.
+  - Overall_Implementation_plan.md and step_by_step_implementation_checklist.md.
+  - A prompt file containing the prompts the coding agent will be given.
+  - A decision log recording the choices made and why.
+
+Helper tools referenced (both third-party; read before installing):
+  - Taste skill: improves the visual quality of AI-generated interfaces.
+  - Graphify: builds a queryable knowledge graph of the codebase and docs to
+    help the coding agent navigate as the project grows. Most useful once real
+    code exists.
+
+
+--------------------------------------------------------------------------------
+18. IMPLEMENTATION APPROACH
+--------------------------------------------------------------------------------
+
+Build in thin vertical slices, running smoke tests after each, committing only
+when the checklist item passes:
+
+  Slice 1  Provider interfaces, the .eml reader (local mail provider), and the
+           CRM repository on SQLite.
+  Slice 2  Ingestion Agent and Stage Classifier, running on Ollama.
+  Slice 3  Scheduler Agent, validated against all three scheduling scenarios.
+  Slice 4  CRM API, then the web dashboard (and later the Teams agent).
+  Slice 5  Write the Graph and Azure OpenAI providers from the documentation,
+           add contract tests, and prepare the "first day with access"
+           checklist.
+  Slice 6  When access arrives, switch to live mode by configuration and verify
+           each live provider against the checklist.
+
+
+--------------------------------------------------------------------------------
+19. OPEN DECISIONS
+--------------------------------------------------------------------------------
+
+  - Programming language and backend framework (Microsoft Agent Framework
+    supports more than one language).
+  - Frontend framework.
+  - CRM store for the live phase (Azure SQL, Dataverse, or another); SQLite is
+    assumed for the local phase.
+  - Which AI coding agent will be used to build the project.
+  - The local Ollama model size, which depends on available RAM and GPU.
+  - Exact Graph permission set and who approves it.
+  - Whether to also build the Teams Copilot agent in the first release or after
+    the web dashboard.
+  - Hosting target for the eventual live deployment.
+
+
+--------------------------------------------------------------------------------
+20. GLOSSARY
+--------------------------------------------------------------------------------
+
+  Agent ............ A small software component, usually driven by a language
+                     model, that performs one job in the workflow.
+  Orchestrator ..... The component that coordinates the agents and enforces the
+                     approval step.
+  Provider ......... An interface behind which a live service and a local
+                     fallback are interchangeable.
+  Fallback ......... The local alternative used when the live service is not
+                     available (synthetic emails, mock calendar, Ollama).
+  Microsoft Graph .. Microsoft's API for Microsoft 365 data such as mail,
+                     calendars, and Teams meetings.
+  EML .............. A standard email file format used for the synthetic emails.
+  Idempotent ....... Safe to repeat: running the same operation twice produces
+                     the same result with no duplicates.
+  Smoke test ....... A quick end-to-end check that the core flow still works.
+  Contract test .... A test that checks code against sample responses shaped like
+                     a real service, without calling the real service.
+  Human in the loop  A person reviews and approves before an action is taken.
+
+================================================================================
+END OF DOCUMENT
+================================================================================

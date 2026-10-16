@@ -1,0 +1,76 @@
+Message-ID: <f07.202609021530@contoso.com>
+Date: Wed, 02 Sep 2026 15:30:00 -0500
+From: Raj Patel <raj.patel@contoso.com>
+To: Daniel Brooks <daniel.brooks@fabrikam.com>
+Cc: Sarah Mitchell <sarah.mitchell@contoso.com>
+Subject: RE: Fabrikam + Contoso Insight: demo recap and proposal
+In-Reply-To: <f06.202609020945@fabrikam.com>
+References: <f05.202608191620@contoso.com> <f06.202609020945@fabrikam.com>
+Thread-Topic: Fabrikam + Contoso Insight: demo recap and proposal
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============2196983721038713785=="
+
+--===============2196983721038713785==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hi Daniel,
+
+Jumping in on the technical questions:
+
+1. Yes, SSO is supported through Entra ID (SAML and OIDC).
+2. Yes, US customers are hosted in US regions by default.
+3. Sarah will confirm on billing, but quarterly billing is available on annua=
+l terms.
+
+Happy to set up a short call with your IT team if that helps.
+
+Regards,
+
+Raj Patel
+Solutions Engineer | Contoso
++1 (214) 555-0115 | raj.patel@contoso.com
+
+________________________________
+From: Daniel Brooks <daniel.brooks@fabrikam.com>
+Sent: Wednesday, September 02, 2026 09:45 AM
+To: Sarah Mitchell <sarah.mitchell@contoso.com>
+Subject: RE: Fabrikam + Contoso Insight: demo recap and proposal
+
+Hi Sarah,
+
+We've reviewed the proposal internally. A few questions before we take it to =
+finance:
+
+1. Does it support SSO with Microsoft Entra ID?
+2. Is customer data stored in US data centers?
+3. Is there an option for quarterly billing instead of annual upfront?
+
+Thanks,
+
+Daniel Brooks
+VP Sales Operations, Fabrikam Inc.
+
+--===============2196983721038713785==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><body><p>Hi Daniel,</p><p>Jumping in on the technical questions:</p><p>=
+1. Yes, SSO is supported through Entra ID (SAML and OIDC).<br>2. Yes, US cust=
+omers are hosted in US regions by default.<br>3. Sarah will confirm on billin=
+g, but quarterly billing is available on annual terms.</p><p>Happy to set up =
+a short call with your IT team if that helps.</p><p>Regards,</p><p>Raj Patel<=
+br>Solutions Engineer | Contoso<br>+1 (214) 555-0115 | raj.patel@contoso.com<=
+/p><p>________________________________<br>From: Daniel Brooks &lt;daniel.broo=
+ks@fabrikam.com&gt;<br>Sent: Wednesday, September 02, 2026 09:45 AM<br>To: Sa=
+rah Mitchell &lt;sarah.mitchell@contoso.com&gt;<br>Subject: RE: Fabrikam + Co=
+ntoso Insight: demo recap and proposal</p><p>Hi Sarah,</p><p>We've reviewed t=
+he proposal internally. A few questions before we take it to finance:</p><p>1=
+. Does it support SSO with Microsoft Entra ID?<br>2. Is customer data stored =
+in US data centers?<br>3. Is there an option for quarterly billing instead of=
+ annual upfront?</p><p>Thanks,</p><p>Daniel Brooks<br>VP Sales Operations, Fa=
+brikam Inc.</p></body></html>
+
+--===============2196983721038713785==--

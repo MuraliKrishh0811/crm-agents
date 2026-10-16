@@ -1,0 +1,86 @@
+{
+  "organization": {
+    "name": "Contoso",
+    "domain": "contoso.com",
+    "timeZone": "America/Chicago",
+    "simulationNow": "2026-10-16T10:00:00"
+  },
+  "members": [
+    {
+      "key": "sarah",
+      "name": "Sarah Mitchell",
+      "email": "sarah.mitchell@contoso.com",
+      "role": "Account Executive"
+    },
+    {
+      "key": "emily",
+      "name": "Emily Chen",
+      "email": "emily.chen@contoso.com",
+      "role": "Senior Account Executive"
+    },
+    {
+      "key": "raj",
+      "name": "Raj Patel",
+      "email": "raj.patel@contoso.com",
+      "role": "Solutions Engineer"
+    },
+    {
+      "key": "david",
+      "name": "David Okafor",
+      "email": "david.okafor@contoso.com",
+      "role": "Solutions Engineer"
+    }
+  ],
+  "assignmentRules": {
+    "default": {
+      "accountExecutive": "sarah.mitchell@contoso.com",
+      "solutionsEngineer": "david.okafor@contoso.com"
+    },
+    "byClientDomain": {
+      "fabrikam.com": [
+        "sarah.mitchell@contoso.com",
+        "raj.patel@contoso.com"
+      ],
+      "northwindtraders.com": [
+        "sarah.mitchell@contoso.com",
+        "david.okafor@contoso.com"
+      ],
+      "adventure-works.com": [
+        "emily.chen@contoso.com",
+        "raj.patel@contoso.com"
+      ],
+      "tailspintoys.com": [
+        "sarah.mitchell@contoso.com",
+        "david.okafor@contoso.com"
+      ],
+      "wingtiptoys.com": [
+        "emily.chen@contoso.com",
+        "david.okafor@contoso.com"
+      ]
+    }
+  },
+  "schedulingPolicy": {
+    "durationsMinutes": {
+      "intro": 30,
+      "discovery": 30,
+      "demo": 60,
+      "walkthrough": 60,
+      "kickoff": 60
+    },
+    "slotGranularityMinutes": 30,
+    "hardBlocking": [
+      "busy",
+      "oof"
+    ],
+    "softBlocking": [
+      "tentative"
+    ],
+    "nonBlocking": [
+      "free",
+      "workingElsewhere"
+    ],
+    "respectInternalWorkingHours": true,
+    "maxSuggestions": 3,
+    "requireHumanApproval": true
+  }
+}

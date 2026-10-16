@@ -1,0 +1,447 @@
+{
+  "stages": [
+    "Initial Lead",
+    "Engagement",
+    "Presentation/Follow-up",
+    "Converted",
+    "Not Converted"
+  ],
+  "stageDefinitions": {
+    "Initial Lead": "First contact; no two-way conversation established yet.",
+    "Engagement": "Active two-way conversation, discovery, or arranging an intro/discovery call.",
+    "Presentation/Follow-up": "Demo/walkthrough/proposal delivered or a presentation meeting is confirmed.",
+    "Converted": "Client has committed (signed, PO, approved purchase).",
+    "Not Converted": "Client has declined, chosen another vendor, or gone dark after closure."
+  },
+  "simulationNow": "2026-10-16T10:00:00",
+  "clients": {
+    "fabrikam": {
+      "finalStage": "Converted",
+      "nextAction": "Run onboarding kickoff on 2026-10-27 09:00-10:00 CT (already scheduled).",
+      "emails": [
+        {
+          "emailId": "F01",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "create_lead"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "F02",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "F03",
+          "expectedStageAfter": "Engagement",
+          "expectedActions": [
+            "log_engagement",
+            "add_contact:karen.wu@fabrikam.com"
+          ],
+          "notes": "Client proposed times for a past call; historical, no scheduling action."
+        },
+        {
+          "emailId": "F04",
+          "expectedStageAfter": "Engagement",
+          "expectedActions": [
+            "log_engagement",
+            "log_meeting:2026-08-06 14:00 CT discovery"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "F05",
+          "expectedStageAfter": "Presentation/Follow-up",
+          "expectedActions": [
+            "log_engagement",
+            "log_attachment:proposal"
+          ],
+          "notes": "New subject but same client: must link by domain/contacts, not thread."
+        },
+        {
+          "emailId": "F06",
+          "expectedStageAfter": "Presentation/Follow-up",
+          "expectedActions": [
+            "log_engagement",
+            "set_next_action:answer questions"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "F07",
+          "expectedStageAfter": "Presentation/Follow-up",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "F08",
+          "expectedStageAfter": "Converted",
+          "expectedActions": [
+            "set_stage:Converted",
+            "set_next_action:onboarding"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "F08b",
+          "expectedStageAfter": "Converted",
+          "expectedActions": [
+            "ignore_duplicate"
+          ],
+          "notes": "Same Message-ID as F08; must not create a second record."
+        },
+        {
+          "emailId": "F09",
+          "expectedStageAfter": "Converted",
+          "expectedActions": [
+            "log_engagement",
+            "log_meeting:2026-10-27 09:00 CT kickoff"
+          ],
+          "notes": ""
+        }
+      ]
+    },
+    "northwind": {
+      "finalStage": "Not Converted",
+      "lossReason": "Chose competitor bundled with ERP; tighter budget.",
+      "nextAction": "Nurture: re-engage in April 2027.",
+      "emails": [
+        {
+          "emailId": "N01",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "create_lead"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "N02",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "N03",
+          "expectedStageAfter": "Engagement",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "N04",
+          "expectedStageAfter": "Presentation/Follow-up",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "N05",
+          "expectedStageAfter": "Presentation/Follow-up",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": "Unanswered nudge; no stage change."
+        },
+        {
+          "emailId": "N06",
+          "expectedStageAfter": "Not Converted",
+          "expectedActions": [
+            "set_stage:Not Converted",
+            "record_loss_reason"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "N07",
+          "expectedStageAfter": "Not Converted",
+          "expectedActions": [
+            "set_next_action:re-engage 2027-04"
+          ],
+          "notes": ""
+        }
+      ]
+    },
+    "adventureworks": {
+      "finalStage": "Engagement",
+      "nextAction": "Get approval for demo slot and create Teams meeting.",
+      "emails": [
+        {
+          "emailId": "A01",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "create_lead"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "A02",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "A03",
+          "expectedStageAfter": "Engagement",
+          "expectedActions": [
+            "log_engagement",
+            "capture:60 users, Dynamics 365, decision by end of Q4"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "A04",
+          "expectedStageAfter": "Engagement",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "A05",
+          "expectedStageAfter": "Engagement",
+          "expectedActions": [
+            "add_contact:sophie.turner@adventure-works.com",
+            "schedule_meeting"
+          ],
+          "notes": "See scheduling scenario SCH-ADV."
+        }
+      ]
+    },
+    "tailspin": {
+      "finalStage": "Engagement",
+      "nextAction": "Send counter-proposal with internal free morning slots.",
+      "emails": [
+        {
+          "emailId": "T01",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "create_lead",
+            "request_clarification"
+          ],
+          "notes": "Vague 'sometime next week, mornings': ask for specific times rather than guess."
+        },
+        {
+          "emailId": "T02",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "T03",
+          "expectedStageAfter": "Engagement",
+          "expectedActions": [
+            "schedule_meeting"
+          ],
+          "notes": "See scheduling scenario SCH-TAIL."
+        }
+      ]
+    },
+    "wingtip": {
+      "finalStage": "Presentation/Follow-up",
+      "nextAction": "Get approval to move walkthrough; update existing event.",
+      "emails": [
+        {
+          "emailId": "W01",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "create_lead"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "W02",
+          "expectedStageAfter": "Initial Lead",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "W03",
+          "expectedStageAfter": "Engagement",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": "New subject, same client."
+        },
+        {
+          "emailId": "W04",
+          "expectedStageAfter": "Engagement",
+          "expectedActions": [
+            "log_engagement"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "W05",
+          "expectedStageAfter": "Presentation/Follow-up",
+          "expectedActions": [
+            "log_meeting:2026-10-22 13:00 CT walkthrough"
+          ],
+          "notes": ""
+        },
+        {
+          "emailId": "W06",
+          "expectedStageAfter": "Presentation/Follow-up",
+          "expectedActions": [
+            "add_contact:lisa.park@wingtiptoys.com",
+            "reschedule_meeting"
+          ],
+          "notes": "See scheduling scenario SCH-WING."
+        }
+      ]
+    },
+    "noise": {
+      "emails": [
+        {
+          "emailId": "X01",
+          "expectedStageAfter": null,
+          "expectedActions": [
+            "ignore_noise"
+          ],
+          "notes": "Internal email; no CRM record."
+        }
+      ]
+    }
+  },
+  "schedulingScenarios": [
+    {
+      "id": "SCH-ADV",
+      "client": "adventureworks",
+      "triggerEmail": "A05",
+      "attendeesInternal": [
+        "emily.chen@contoso.com",
+        "raj.patel@contoso.com"
+      ],
+      "attendeesExternal": [
+        "oliver.bennett@adventure-works.com",
+        "sophie.turner@adventure-works.com"
+      ],
+      "durationMinutes": 60,
+      "clientTimeZone": "Europe/London",
+      "clientSlots": [
+        {
+          "client": "2026-10-20 15:00-17:00 BST",
+          "orgTime": "2026-10-20 09:00-11:00 CDT",
+          "result": "rejected",
+          "reason": "Emily busy 09:00-10:30; only 30 min common free."
+        },
+        {
+          "client": "2026-10-21 14:00-15:30 BST",
+          "orgTime": "2026-10-21 08:00-09:30 CDT",
+          "result": "fallback_with_warning",
+          "reason": "Raj tentative 08:30-09:00; no 60-min fully-free window."
+        },
+        {
+          "client": "2026-10-27 14:00-16:00 GMT",
+          "orgTime": "2026-10-27 09:00-11:00 CDT",
+          "result": "selected",
+          "reason": "Raj busy 09:00-10:00 (Fabrikam kickoff); 10:00-11:00 free for both."
+        }
+      ],
+      "expectedRecommendation": {
+        "orgTime": "2026-10-27T10:00:00 to 11:00:00 America/Chicago",
+        "clientTime": "2026-10-27 15:00-16:00 GMT"
+      },
+      "expectedAction": "create_event (Teams) after approval; stage -> Presentation/Follow-up",
+      "traps": [
+        "UK leaves BST on 2026-10-25, US stays on CDT until 2026-11-01: offset is 6h before, 5h after. Using a fixed 6h offset for Oct 27 yields 08:00-09:00 CDT, which is outside the client's window.",
+        "Tentative should be soft, not hard-blocking.",
+        "Add Sophie Turner (cc'd) as attendee."
+      ]
+    },
+    {
+      "id": "SCH-TAIL",
+      "client": "tailspin",
+      "triggerEmail": "T03",
+      "attendeesInternal": [
+        "sarah.mitchell@contoso.com",
+        "david.okafor@contoso.com"
+      ],
+      "attendeesExternal": [
+        "maria.gonzalez@tailspintoys.com"
+      ],
+      "durationMinutes": 30,
+      "clientTimeZone": "America/Denver",
+      "clientSlots": [
+        {
+          "client": "2026-10-19 09:00-10:00 MDT",
+          "orgTime": "2026-10-19 10:00-11:00 CDT",
+          "result": "rejected",
+          "reason": "Sarah out of office all day."
+        },
+        {
+          "client": "2026-10-22 08:00-09:00 MDT",
+          "orgTime": "2026-10-22 09:00-10:00 CDT",
+          "result": "rejected",
+          "reason": "David busy 08:30-10:00 (customer workshop)."
+        }
+      ],
+      "expectedRecommendation": null,
+      "expectedAction": "counter_propose: draft reply with 2-3 slots where Sarah and David are both free, in client's mornings (08:00-12:00 MDT = 09:00-13:00 CDT), shown in Mountain time",
+      "validCounterProposalExamples": [
+        "2026-10-20 10:00-10:30 CDT (09:00 MDT)",
+        "2026-10-21 09:00-09:30 CDT (08:00 MDT)",
+        "2026-10-22 10:00-10:30 CDT (09:00 MDT)"
+      ],
+      "traps": [
+        "Must not create a meeting when no overlap exists.",
+        "Earlier email T01 was vague; agent should have asked for specifics, not guessed."
+      ]
+    },
+    {
+      "id": "SCH-WING",
+      "client": "wingtip",
+      "triggerEmail": "W06",
+      "attendeesInternal": [
+        "emily.chen@contoso.com",
+        "david.okafor@contoso.com"
+      ],
+      "attendeesExternal": [
+        "james.carter@wingtiptoys.com",
+        "lisa.park@wingtiptoys.com"
+      ],
+      "durationMinutes": 60,
+      "clientTimeZone": "America/New_York",
+      "existingEvent": "iCalUId wingtip-walkthrough-20261022 (2026-10-22 13:00-14:00 CDT)",
+      "clientSlots": [
+        {
+          "client": "2026-10-21 after 15:00 EDT",
+          "orgTime": "2026-10-21 14:00-17:00 CDT (capped at working hours)",
+          "result": "rejected",
+          "reason": "Emily busy 14:00-15:30, David busy 15:30-16:30; only 16:30-17:00 common. 17:00-18:00 is outside working hours: may mention but not propose without approval."
+        },
+        {
+          "client": "2026-10-23 11:00-13:00 EDT",
+          "orgTime": "2026-10-23 10:00-12:00 CDT",
+          "result": "selected",
+          "reason": "Both free; David's 'Lunch' 11:30-12:30 has showAs=free and must not block."
+        }
+      ],
+      "expectedRecommendation": {
+        "orgTime": "2026-10-23T10:00:00 to 11:00:00 America/Chicago",
+        "clientTime": "2026-10-23 11:00-12:00 EDT"
+      },
+      "expectedAction": "update_event (PATCH existing event, add lisa.park@wingtiptoys.com) after approval; do NOT create a second event",
+      "traps": [
+        "Open-ended client window must be capped by internal working hours.",
+        "Raj is OOF Oct 23 but is not on this team; must not block.",
+        "showAs=free events do not block."
+      ]
+    }
+  ]
+}

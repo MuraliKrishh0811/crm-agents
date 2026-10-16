@@ -1,0 +1,92 @@
+title CRM Engagement and Scheduling Agents
+
+External Client [icon: user]
+
+Experience [icon: monitor] {
+  Web Dashboard [icon: react]
+  Teams Copilot Agent [icon: microsoft-teams]
+}
+
+Backend [icon: server] {
+  CRM API [icon: api]
+  Agent Orchestrator [icon: cpu]
+  Ingestion Agent [icon: mail]
+  Stage Classifier Agent [icon: tag]
+  Summary and Next Action Agent [icon: file-text]
+  Scheduler Agent [icon: calendar]
+  CRM Writer Agent [icon: edit]
+}
+
+Providers [icon: layers] {
+  Mail Provider [icon: mail]
+  Calendar Provider [icon: calendar]
+  Chat Model Provider [icon: brain]
+  CRM Repository [icon: database]
+}
+
+Primary Sources [icon: azure] {
+  Microsoft Graph [icon: microsoft]
+  Exchange Online [icon: outlook]
+  Azure OpenAI via Foundry [icon: azure-openai]
+  Entra ID [icon: azure-active-directory]
+}
+
+Fallback Sources [icon: folder] {
+  Synthetic EML Emails [icon: file]
+  Mock Calendar JSON [icon: file]
+  Ollama Local Model [icon: cpu]
+}
+
+Data [icon: database] {
+  CRM Store [icon: azure-sql-database]
+  Audit and Trace Store [icon: database]
+}
+
+Observability [icon: activity] {
+  App Insights [icon: azure-monitor]
+}
+
+// External client communicates by email only
+External Client > Exchange Online: emails and slot replies
+Exchange Online > External Client: Teams invite and replies
+
+// Experience to backend
+Web Dashboard > CRM API
+Teams Copilot Agent > CRM API
+CRM API > Agent Orchestrator
+
+// Orchestration
+Agent Orchestrator > Ingestion Agent
+Agent Orchestrator > Stage Classifier Agent
+Agent Orchestrator > Summary and Next Action Agent
+Agent Orchestrator > Scheduler Agent
+Agent Orchestrator > CRM Writer Agent
+Ingestion Agent > Scheduler Agent: client slots parsed from email
+
+// Agents to providers
+Ingestion Agent > Mail Provider
+Scheduler Agent > Calendar Provider
+Stage Classifier Agent > Chat Model Provider
+Summary and Next Action Agent > Chat Model Provider
+Scheduler Agent > Chat Model Provider
+
+// Primary paths
+Mail Provider > Microsoft Graph: primary
+Calendar Provider > Microsoft Graph: primary
+Microsoft Graph > Exchange Online
+Microsoft Graph > Entra ID: auth
+Chat Model Provider > Azure OpenAI via Foundry: primary
+
+// Fallback paths
+Mail Provider > Synthetic EML Emails: fallback
+Calendar Provider > Mock Calendar JSON: fallback
+Chat Model Provider > Ollama Local Model: fallback
+
+// CRM store behind repository interface
+CRM Writer Agent > CRM Repository
+CRM API > CRM Repository
+CRM Repository > CRM Store: adapter - Azure SQL, Dataverse or SQLite
+
+// Audit and observability
+Agent Orchestrator > Audit and Trace Store
+Backend > App Insights

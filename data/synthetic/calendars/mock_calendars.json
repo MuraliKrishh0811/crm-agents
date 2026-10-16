@@ -1,0 +1,618 @@
+{
+  "description": "Mock calendars for internal users. Event shape follows Microsoft Graph /events (showAs: free|tentative|busy|oof|workingElsewhere). Times are local to timeZone.",
+  "window": {
+    "start": "2026-10-19T00:00:00",
+    "end": "2026-10-31T00:00:00",
+    "timeZone": "America/Chicago"
+  },
+  "users": {
+    "sarah.mitchell@contoso.com": {
+      "displayName": "Sarah Mitchell",
+      "workingHours": {
+        "daysOfWeek": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday"
+        ],
+        "startTime": "08:00:00",
+        "endTime": "17:00:00",
+        "timeZone": "America/Chicago"
+      },
+      "events": [
+        {
+          "id": "evt-s1-sarah",
+          "iCalUId": "evt-s1",
+          "subject": "Out of office",
+          "start": {
+            "dateTime": "2026-10-19T00:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-20T00:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "oof",
+          "isAllDay": true,
+          "isOnlineMeeting": false,
+          "organizer": "sarah.mitchell@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-weekly-0119-sarah",
+          "iCalUId": "evt-weekly-0119",
+          "subject": "Weekly sales team meeting",
+          "start": {
+            "dateTime": "2026-10-19T08:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-19T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-s2-sarah",
+          "iCalUId": "evt-s2",
+          "subject": "Sales standup",
+          "start": {
+            "dateTime": "2026-10-20T08:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-20T08:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "sarah.mitchell@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-s3-sarah",
+          "iCalUId": "evt-s3",
+          "subject": "Customer call: renewals",
+          "start": {
+            "dateTime": "2026-10-20T13:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-20T14:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "sarah.mitchell@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-s4-sarah",
+          "iCalUId": "evt-s4",
+          "subject": "Forecast review",
+          "start": {
+            "dateTime": "2026-10-21T10:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-21T11:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "sarah.mitchell@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-s5-sarah",
+          "iCalUId": "evt-s5",
+          "subject": "Territory planning",
+          "start": {
+            "dateTime": "2026-10-22T14:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-22T15:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "sarah.mitchell@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-weekly-0126-sarah",
+          "iCalUId": "evt-weekly-0126",
+          "subject": "Weekly sales team meeting",
+          "start": {
+            "dateTime": "2026-10-26T08:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-26T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-fabrikam-kickoff-sarah",
+          "iCalUId": "fabrikam-kickoff-20261027",
+          "subject": "Fabrikam: Onboarding kickoff",
+          "start": {
+            "dateTime": "2026-10-27T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-27T10:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": true,
+          "organizer": "sarah.mitchell@contoso.com",
+          "attendees": [
+            "sarah.mitchell@contoso.com",
+            "raj.patel@contoso.com",
+            "daniel.brooks@fabrikam.com",
+            "karen.wu@fabrikam.com"
+          ]
+        }
+      ]
+    },
+    "emily.chen@contoso.com": {
+      "displayName": "Emily Chen",
+      "workingHours": {
+        "daysOfWeek": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday"
+        ],
+        "startTime": "08:00:00",
+        "endTime": "17:00:00",
+        "timeZone": "America/Chicago"
+      },
+      "events": [
+        {
+          "id": "evt-weekly-0119-emily",
+          "iCalUId": "evt-weekly-0119",
+          "subject": "Weekly sales team meeting",
+          "start": {
+            "dateTime": "2026-10-19T08:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-19T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-e1-emily",
+          "iCalUId": "evt-e1",
+          "subject": "Pipeline review",
+          "start": {
+            "dateTime": "2026-10-20T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-20T10:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-e2-emily",
+          "iCalUId": "evt-e2",
+          "subject": "Leadership sync",
+          "start": {
+            "dateTime": "2026-10-21T14:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-21T15:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-wingtip-walkthrough-emily",
+          "iCalUId": "wingtip-walkthrough-20261022",
+          "subject": "Wingtip Toys: Pricing & solution walkthrough",
+          "start": {
+            "dateTime": "2026-10-22T13:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-22T14:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": true,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": [
+            "emily.chen@contoso.com",
+            "david.okafor@contoso.com",
+            "james.carter@wingtiptoys.com"
+          ]
+        },
+        {
+          "id": "evt-e3-emily",
+          "iCalUId": "evt-e3",
+          "subject": "1:1 with VP Sales",
+          "start": {
+            "dateTime": "2026-10-23T13:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-23T14:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-weekly-0126-emily",
+          "iCalUId": "evt-weekly-0126",
+          "subject": "Weekly sales team meeting",
+          "start": {
+            "dateTime": "2026-10-26T08:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-26T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-e4-emily",
+          "iCalUId": "evt-e4",
+          "subject": "QBR prep",
+          "start": {
+            "dateTime": "2026-10-28T10:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-28T12:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        }
+      ]
+    },
+    "raj.patel@contoso.com": {
+      "displayName": "Raj Patel",
+      "workingHours": {
+        "daysOfWeek": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday"
+        ],
+        "startTime": "08:00:00",
+        "endTime": "17:00:00",
+        "timeZone": "America/Chicago"
+      },
+      "events": [
+        {
+          "id": "evt-weekly-0119-raj",
+          "iCalUId": "evt-weekly-0119",
+          "subject": "Weekly sales team meeting",
+          "start": {
+            "dateTime": "2026-10-19T08:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-19T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-r1-raj",
+          "iCalUId": "evt-r1",
+          "subject": "Vendor call (tentative)",
+          "start": {
+            "dateTime": "2026-10-21T08:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-21T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "tentative",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "raj.patel@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-r2-raj",
+          "iCalUId": "evt-r2",
+          "subject": "Out of office",
+          "start": {
+            "dateTime": "2026-10-23T00:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-24T00:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "oof",
+          "isAllDay": true,
+          "isOnlineMeeting": false,
+          "organizer": "raj.patel@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-weekly-0126-raj",
+          "iCalUId": "evt-weekly-0126",
+          "subject": "Weekly sales team meeting",
+          "start": {
+            "dateTime": "2026-10-26T08:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-26T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-fabrikam-kickoff-raj",
+          "iCalUId": "fabrikam-kickoff-20261027",
+          "subject": "Fabrikam: Onboarding kickoff",
+          "start": {
+            "dateTime": "2026-10-27T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-27T10:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": true,
+          "organizer": "sarah.mitchell@contoso.com",
+          "attendees": [
+            "sarah.mitchell@contoso.com",
+            "raj.patel@contoso.com",
+            "daniel.brooks@fabrikam.com",
+            "karen.wu@fabrikam.com"
+          ]
+        },
+        {
+          "id": "evt-r3-raj",
+          "iCalUId": "evt-r3",
+          "subject": "Architecture review",
+          "start": {
+            "dateTime": "2026-10-27T11:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-27T12:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "raj.patel@contoso.com",
+          "attendees": []
+        }
+      ]
+    },
+    "david.okafor@contoso.com": {
+      "displayName": "David Okafor",
+      "workingHours": {
+        "daysOfWeek": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday"
+        ],
+        "startTime": "08:00:00",
+        "endTime": "17:00:00",
+        "timeZone": "America/Chicago"
+      },
+      "events": [
+        {
+          "id": "evt-weekly-0119-david",
+          "iCalUId": "evt-weekly-0119",
+          "subject": "Weekly sales team meeting",
+          "start": {
+            "dateTime": "2026-10-19T08:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-19T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-d1-david",
+          "iCalUId": "evt-d1",
+          "subject": "Partner enablement",
+          "start": {
+            "dateTime": "2026-10-20T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-20T10:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "david.okafor@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-d2-david",
+          "iCalUId": "evt-d2",
+          "subject": "Proof of concept build",
+          "start": {
+            "dateTime": "2026-10-21T11:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-21T12:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "david.okafor@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-d3-david",
+          "iCalUId": "evt-d3",
+          "subject": "Internal architecture review",
+          "start": {
+            "dateTime": "2026-10-21T15:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-21T16:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "david.okafor@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-d4-david",
+          "iCalUId": "evt-d4",
+          "subject": "Customer workshop",
+          "start": {
+            "dateTime": "2026-10-22T08:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-22T10:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "david.okafor@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-wingtip-walkthrough-david",
+          "iCalUId": "wingtip-walkthrough-20261022",
+          "subject": "Wingtip Toys: Pricing & solution walkthrough",
+          "start": {
+            "dateTime": "2026-10-22T13:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-22T14:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": true,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": [
+            "emily.chen@contoso.com",
+            "david.okafor@contoso.com",
+            "james.carter@wingtiptoys.com"
+          ]
+        },
+        {
+          "id": "evt-d5-david",
+          "iCalUId": "evt-d5",
+          "subject": "Lunch",
+          "start": {
+            "dateTime": "2026-10-23T11:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-23T12:30:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "free",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "david.okafor@contoso.com",
+          "attendees": []
+        },
+        {
+          "id": "evt-weekly-0126-david",
+          "iCalUId": "evt-weekly-0126",
+          "subject": "Weekly sales team meeting",
+          "start": {
+            "dateTime": "2026-10-26T08:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "end": {
+            "dateTime": "2026-10-26T09:00:00",
+            "timeZone": "America/Chicago"
+          },
+          "showAs": "busy",
+          "isAllDay": false,
+          "isOnlineMeeting": false,
+          "organizer": "emily.chen@contoso.com",
+          "attendees": []
+        }
+      ]
+    }
+  }
+}

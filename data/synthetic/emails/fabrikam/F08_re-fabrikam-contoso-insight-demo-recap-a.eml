@@ -1,0 +1,74 @@
+Message-ID: <f08.202609281105@fabrikam.com>
+Date: Mon, 28 Sep 2026 11:05:00 -0500
+From: Daniel Brooks <daniel.brooks@fabrikam.com>
+To: Sarah Mitchell <sarah.mitchell@contoso.com>
+Cc: Raj Patel <raj.patel@contoso.com>, Karen Wu <karen.wu@fabrikam.com>
+Subject: RE: Fabrikam + Contoso Insight: demo recap and proposal
+In-Reply-To: <f07.202609021530@contoso.com>
+References: <f05.202608191620@contoso.com> <f06.202609020945@fabrikam.com>
+ <f07.202609021530@contoso.com>
+Thread-Topic: Fabrikam + Contoso Insight: demo recap and proposal
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============2152798203435727283=="
+
+--===============2152798203435727283==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hi Sarah,
+
+Good news: finance approved it and I've signed the order form through DocuSig=
+n this morning. 120 seats, quarterly billing, starting in October.
+
+What are the next steps for onboarding?
+
+Thanks,
+
+Daniel Brooks
+VP Sales Operations, Fabrikam Inc.
+
+________________________________
+From: Raj Patel <raj.patel@contoso.com>
+Sent: Wednesday, September 02, 2026 03:30 PM
+To: Daniel Brooks <daniel.brooks@fabrikam.com>
+Subject: RE: Fabrikam + Contoso Insight: demo recap and proposal
+
+Hi Daniel,
+
+Jumping in on the technical questions:
+
+1. Yes, SSO is supported through Entra ID (SAML and OIDC).
+2. Yes, US customers are hosted in US regions by default.
+3. Sarah will confirm on billing, but quarterly billing is available on annua=
+l terms.
+
+Happy to set up a short call with your IT team if that helps.
+
+Regards,
+
+Raj Patel
+Solutions Engineer | Contoso
++1 (214) 555-0115 | raj.patel@contoso.com
+
+--===============2152798203435727283==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><body><p>Hi Sarah,</p><p>Good news: finance approved it and I've signed=
+ the order form through DocuSign this morning. 120 seats, quarterly billing, =
+starting in October.</p><p>What are the next steps for onboarding?</p><p>Than=
+ks,</p><p>Daniel Brooks<br>VP Sales Operations, Fabrikam Inc.</p><p>_________=
+_______________________<br>From: Raj Patel &lt;raj.patel@contoso.com&gt;<br>S=
+ent: Wednesday, September 02, 2026 03:30 PM<br>To: Daniel Brooks &lt;daniel.b=
+rooks@fabrikam.com&gt;<br>Subject: RE: Fabrikam + Contoso Insight: demo recap=
+ and proposal</p><p>Hi Daniel,</p><p>Jumping in on the technical questions:</=
+p><p>1. Yes, SSO is supported through Entra ID (SAML and OIDC).<br>2. Yes, US=
+ customers are hosted in US regions by default.<br>3. Sarah will confirm on b=
+illing, but quarterly billing is available on annual terms.</p><p>Happy to se=
+t up a short call with your IT team if that helps.</p><p>Regards,</p><p>Raj P=
+atel<br>Solutions Engineer | Contoso<br>+1 (214) 555-0115 | raj.patel@contoso=
+.com</p></body></html>
+
+--===============2152798203435727283==--

@@ -1,0 +1,79 @@
+Message-ID: <f06.202609020945@fabrikam.com>
+Date: Wed, 02 Sep 2026 09:45:00 -0500
+From: Daniel Brooks <daniel.brooks@fabrikam.com>
+To: Sarah Mitchell <sarah.mitchell@contoso.com>
+Cc: Raj Patel <raj.patel@contoso.com>
+Subject: RE: Fabrikam + Contoso Insight: demo recap and proposal
+In-Reply-To: <f05.202608191620@contoso.com>
+References: <f05.202608191620@contoso.com>
+Thread-Topic: Fabrikam + Contoso Insight: demo recap and proposal
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============7339814426553585302=="
+
+--===============7339814426553585302==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hi Sarah,
+
+We've reviewed the proposal internally. A few questions before we take it to =
+finance:
+
+1. Does it support SSO with Microsoft Entra ID?
+2. Is customer data stored in US data centers?
+3. Is there an option for quarterly billing instead of annual upfront?
+
+Thanks,
+
+Daniel Brooks
+VP Sales Operations, Fabrikam Inc.
+
+________________________________
+From: Sarah Mitchell <sarah.mitchell@contoso.com>
+Sent: Wednesday, August 19, 2026 04:20 PM
+To: Daniel Brooks <daniel.brooks@fabrikam.com>
+Subject: Fabrikam + Contoso Insight: demo recap and proposal
+
+Hi Daniel,
+
+Thanks to you and Karen for the time at yesterday's demo. A quick recap of wh=
+at we covered:
+
+- Consolidated pipeline and forecast views by region, pulling directly from D=
+ynamics 365
+- Weekly manager digest emails
+- Rollout plan of roughly 4 weeks for 120 seats
+
+The attached proposal covers 120 seats on an annual plan. Happy to walk throu=
+gh any questions, and Raj can go deeper on the technical side.
+
+Best,
+
+Sarah Mitchell
+Account Executive | Contoso
++1 (214) 555-0142 | sarah.mitchell@contoso.com
+
+--===============7339814426553585302==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><body><p>Hi Sarah,</p><p>We've reviewed the proposal internally. A few =
+questions before we take it to finance:</p><p>1. Does it support SSO with Mic=
+rosoft Entra ID?<br>2. Is customer data stored in US data centers?<br>3. Is t=
+here an option for quarterly billing instead of annual upfront?</p><p>Thanks,=
+</p><p>Daniel Brooks<br>VP Sales Operations, Fabrikam Inc.</p><p>____________=
+____________________<br>From: Sarah Mitchell &lt;sarah.mitchell@contoso.com&g=
+t;<br>Sent: Wednesday, August 19, 2026 04:20 PM<br>To: Daniel Brooks &lt;dani=
+el.brooks@fabrikam.com&gt;<br>Subject: Fabrikam + Contoso Insight: demo recap=
+ and proposal</p><p>Hi Daniel,</p><p>Thanks to you and Karen for the time at =
+yesterday's demo. A quick recap of what we covered:</p><p>- Consolidated pipe=
+line and forecast views by region, pulling directly from Dynamics 365<br>- We=
+ekly manager digest emails<br>- Rollout plan of roughly 4 weeks for 120 seats=
+</p><p>The attached proposal covers 120 seats on an annual plan. Happy to wal=
+k through any questions, and Raj can go deeper on the technical side.</p><p>B=
+est,</p><p>Sarah Mitchell<br>Account Executive | Contoso<br>+1 (214) 555-0142=
+ | sarah.mitchell@contoso.com</p></body></html>
+
+--===============7339814426553585302==--
