@@ -1,0 +1,22 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# node
+node_modules/
+dist/
+playwright-report/
+test-results/
+# local data and tooling
+*.db
+*.sqlite
+*.log
+.DS_Store
+.claude/settings.local.json
