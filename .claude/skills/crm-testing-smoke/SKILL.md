@@ -26,7 +26,7 @@ tests/
   smoke/      the smoke test
 ```
 
-Suggested files (finalize in each slice's plan): `agents/test_stage_exact.py` (TR-1), `agents/test_scheduling_exact.py` (TR-2), `agents/test_rubric.py` + `agents/rubrics/*.md` (TR-3), `agents/test_idempotency.py` (TR-6), `agents/test_model_accuracy.py` (TR-8), `agents/test_live_contract.py` (TR-7), `backend/curl/*.sh` and a scripted runner (TR-4), `frontend/*.spec.ts` (TR-5), `smoke/` (TR-9).
+Suggested files (finalize in each slice's plan): `agents/test_stage_exact.py` (TR-1), `agents/test_scheduling_exact.py` (TR-2), `agents/test_rubric.py` + `agents/rubrics/*.md` (TR-3), `agents/test_idempotency.py` (TR-6), `agents/test_model_accuracy.py` (TR-8), `agents/test_live_contract.py` (TR-7), `agents/test_request_lifecycle.py` (TR-10), `backend/test_approval_recheck.py` (TR-11), `backend/test_approval_failure.py` (TR-12), `backend/test_api_safety.py` (TR-13), `backend/curl/*.sh` and a scripted runner (TR-4), `frontend/*.spec.ts` (TR-5), `smoke/` (TR-9).
 
 ## Test types
 
@@ -37,10 +37,14 @@ Suggested files (finalize in each slice's plan): `agents/test_stage_exact.py` (T
 | TR-3 | Summaries and drafted replies (no single right answer) | **Written rubric**: accuracy, completeness, tone, no invented facts. Store rubric files in `tests/agents/rubrics/`; record per-criterion scores per run. Scorer (human spot-check vs a judge model) and pass threshold are **open, ask the user**; llama3.1:8b as its own judge is weak |
 | TR-4 | Every CRM API endpoint | A `curl` command and a scripted equivalent per endpoint, run against the running local system |
 | TR-5 | Pipeline view, customer timeline, scheduling panel, approve/edit/reject | **Playwright** scripts. TODO: Playwright is not in `inputs/references.md`; verify against its official docs before writing, no snippets from memory |
-| TR-6 | Idempotency | Replay the full email set twice; CRM state identical |
+| TR-6 | Idempotency | Replay the full email set twice: CRM state identical. **And** approve the same request twice: no duplicates (section 13 TR-6 now says both) |
 | TR-7 | Live Graph and Foundry/Azure OpenAI providers | Contract tests: real adapter code against sample responses shaped like real output; labeled contract tests, never live verification |
 | TR-8 | Model accuracy | Report stage-classification accuracy per run with model name and `num_ctx`; used for the `qwen3:8b` comparison |
 | TR-9 | Smoke | Below: warm-up, then (a) replay with no approval, then (b) explicit approval via the real endpoint |
+| TR-10 | Request lifecycle (FR-SCH-12) | Transitions match the requirement: `pending`; **superseded** by a newer email in the same thread with new times; **cancelled** by a withdrawal; **expired** when all offered windows are past. The clock is fixed at `SIMULATED_NOW` for a run (decisions.md OQ-24), and the three scenario windows (19 to 27 Oct) are after it, so **inject a later clock** to test expiry. Old requests are kept |
+| TR-11 | Approval re-check (FR-APP-4) | Introduce a real calendar conflict after the proposal (write a busy event through the real calendar provider), then approve: the response is the `409 availability_changed` (proposed in `docs/api.md`), the state is `needs_review`, the fresh options replace the proposed slots, approval progress is `not_started`, **no event is created and nothing is sent**; approving one fresh option then works, and so does rejecting (OQ-31, OQ-32) |
+| TR-12 | Approval failure (FR-APP-5, R6) | Force a real failure in one step (for example make the mail provider's send fail through a controllable real condition, not a stub): the approval is `partially_completed` with the failed step visible and earlier steps kept; retry completes with **no duplicate** meeting, event or sent message; each step has an `AgentRun` entry linked to the request |
+| TR-13 | API safety (R5) | The approve endpoint rejects a foreign `Origin`, a missing `X-CRM-Token` header (the per-run token) and a wrong content type; each test also asserts the request is still `pending` and nothing was created or sent. Proposed extras: wrong token, `Origin: null`, wrong `Host`, foreign-origin preflight gets no CORS allow headers, no connection on a non-loopback address. See `docs/api.md` section 10.1 |
 
 Rules: tests may read the answer key, production code must not (R8). Add a guard test that fails if production code references the answer-key path or dataset client names. Never edit the dataset or key to make a test pass. LLM-dependent tests are non-deterministic: do not loosen exact-match; record the failure and the accuracy number.
 
@@ -52,23 +56,26 @@ Section 10 defines "final stage" as the state **after replaying all emails and b
 
 1. Start the system in local mode.
 2. **Warm-up call to Ollama first** (the model unloads when idle; `crm-ollama-local-model`), and fail fast with a clear message if Ollama is down or `OLLAMA_MODEL` is not pulled.
+2b. Get the per-run API token from `GET /session` (it is generated at API start, held in memory and never in `.env`); the writes in part (b) send it in `X-CRM-Token` with `Content-Type: application/json` and, on approve, an `Idempotency-Key`.
 
 **Part (a): replay, no approval**
 
 3. Replay all emails against the simulated clock `2026-10-16T10:00:00` `America/Chicago`.
 4. Assert each customer's final stage from section 10 and the key: Fabrikam Converted, Northwind Not Converted, Adventure Works Engagement, Tailspin Toys Engagement, Wingtip Toys Presentation/Follow-up.
-5. Assert a **pending** scheduling request exists for Adventure Works (`recommend_slots`), Tailspin (`counter_propose`) and Wingtip (`update_existing_meeting`), with the expected slots and reasons (TR-2).
+5. Assert a **pending** scheduling request (state `pending`, FR-SCH-12) exists for Adventure Works (`recommend_slots`), Tailspin (`counter_propose`) and Wingtip (`update_existing_meeting`), with the expected slots and reasons (TR-2). A request replaced by a newer email is `superseded` and kept for audit; it is not pending.
 6. Assert nothing approval-gated happened (R5): no meeting created, the Wingtip event `wingtip-walkthrough-20261022` unchanged, no draft sent without an approval record.
 
 **Part (b): explicit approval through the real approval endpoint** (the CRM API's approval route, FR-API-1 and FR-APP-2; never a direct repository or provider call)
 
-7. Approve Adventure Works: the meeting is created once with attendees Emily, Raj, Oliver Bennett, Sophie Turner at the expected slot, join link stored as simulated (R10); stage moves to Presentation/Follow-up with a stage-history entry; approval records who and when (FR-APP-3).
+7. Approve Adventure Works, naming exactly one proposed slot by id: the meeting is created once with attendees Emily, Raj, Oliver Bennett, Sophie Turner at the expected slot, join link stored as simulated (R10); stage moves to Presentation/Follow-up with a stage-history entry whose source is the approval; the request records `decision`, `decided_by` and `decided_at` (FR-APP-3), approval progress `completed`, and one `AgentRun` per approval step.
 8. Approve Tailspin: the counter-proposal reply is sent (local mode records it through the real `MailProvider`), no meeting is created, stage stays Engagement.
 9. Approve Wingtip: the existing event is updated (not duplicated) to the expected new slot, `lisa.park@wingtiptoys.com` is added, stage stays Presentation/Follow-up.
-10. Repeat each approval call: no duplicate meeting, event or sent message (R6). This repeat check is my addition, not in section 13; drop it if you disagree.
+10. **Repeat-approval check (kept; required by TR-6 and recorded in `inputs/decisions.md`):** repeat each approval call; no duplicate meeting, event or sent message (R6).
 
 **Always**
 
 11. Assert no duplicate records (Message-ID, meetings by key).
+
+**Approval and lifecycle tests beyond the smoke path** are now `TR-10` to `TR-13` in `REQUIREMENTS.md` section 13 (rows above); they cover FR-SCH-12, FR-APP-4, FR-APP-5 and the API safety measures, and the Definition of done requires them to pass (section 17). They use real providers; inject the failure or conflict with a real, controllable condition, not a stub (R1). An **edit** (changing only the draft reply text) is not a state change: test that it adds an audit entry and leaves `decision`, `state` and approval progress unchanged. After a conflict the approval progress returns to `not_started`, the fresh options replace the proposed slots (the earlier ones go to an audit entry), and the approver approves one fresh option or rejects (FR-APP-4; hld.md OQ-31, OQ-32).
 
 Failures stop the slice; they are fixed in code, not in the test or data.

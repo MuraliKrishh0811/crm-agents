@@ -1,6 +1,6 @@
 ---
 name: crm-security-env
-description: Security and environment-file handling for CRM Agents - never read .env, use example.env, deny rules, secrets in code/logs/tests/docs, config keys (current and proposed), untrusted email content, and what to check before any commit. Use whenever touching configuration, credentials, logging, git staging, or anything that could expose a secret.
+description: Security and environment-file handling for CRM Agents - never read .env, use example.env, deny rules, secrets in code/logs/tests/docs, config keys, untrusted email content, and what to check before any commit. Use whenever touching configuration, credentials, logging, git staging, or anything that could expose a secret.
 ---
 
 # Security and env handling
@@ -31,12 +31,14 @@ description: Security and environment-file handling for CRM Agents - never read 
 
 ## Config keys
 
-`example.env` is the single list of settings (FR-CFG-1). Keys, as of 2026-10-16: `PROVIDER_MODE`, `MAIL_PROVIDER`, `CALENDAR_PROVIDER`, `MODEL_PROVIDER`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_NUM_CTX`, `OLLAMA_KEEP_ALIVE`, `OLLAMA_TEMPERATURE`, `OLLAMA_MAX_RETRIES`, `OLLAMA_REQUEST_TIMEOUT_S`, `OLLAMA_WARMUP_ON_START`, `FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_VERSION`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `DATABASE_URL`, `DATA_DIR`, `SIMULATED_NOW`, `SIMULATED_TZ`, `LOG_LEVEL`.
+`example.env` is the single list of settings (FR-CFG-1). Keys, as of 2026-10-16: `PROVIDER_MODE`, `MAIL_PROVIDER`, `CALENDAR_PROVIDER`, `MODEL_PROVIDER`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_NUM_CTX`, `OLLAMA_KEEP_ALIVE`, `OLLAMA_TEMPERATURE`, `OLLAMA_MAX_RETRIES`, `OLLAMA_REQUEST_TIMEOUT_S`, `OLLAMA_WARMUP_ON_START`, `FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_VERSION`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `DATABASE_URL`, `DATA_DIR`, `SIMULATED_NOW`, `SIMULATED_TZ`, `LOG_LEVEL`, `APPROVER_USER`, `API_PORT`, `DASHBOARD_ORIGIN`, `STALE_LEAD_DAYS`.
 
 Notes:
 
-- Secrets and endpoints stay blank in `example.env`. Only non-secret defaults carry a value: modes, `OLLAMA_TEMPERATURE=0`, `OLLAMA_WARMUP_ON_START=true`, `DATA_DIR`, `SIMULATED_NOW`, `SIMULATED_TZ`, `LOG_LEVEL`. Tuning values (`OLLAMA_NUM_CTX`, `OLLAMA_KEEP_ALIVE`, `OLLAMA_MAX_RETRIES`, `OLLAMA_REQUEST_TIMEOUT_S`) are blank until confirmed on the machine; code fails clearly on a missing required value.
-- `SIMULATED_NOW` is naive local time and `SIMULATED_TZ` is its IANA zone, so no fixed UTC offset is stored (R9).
+- Secrets and endpoints stay blank in `example.env`. Only non-secret defaults carry a value: modes, `OLLAMA_TEMPERATURE=0`, `OLLAMA_WARMUP_ON_START=true`, `DATA_DIR`, `SIMULATED_NOW`, `SIMULATED_TZ`, `LOG_LEVEL`, `STALE_LEAD_DAYS=14`. Tuning values (`OLLAMA_NUM_CTX`, `OLLAMA_KEEP_ALIVE`, `OLLAMA_MAX_RETRIES`, `OLLAMA_REQUEST_TIMEOUT_S`) are blank until confirmed on the machine; code fails clearly on a missing required value.
+- `SIMULATED_NOW` is naive local time and `SIMULATED_TZ` is its IANA zone, so no fixed UTC offset is stored (R9). Both override `organization.simulationNow` in `config/team.json` (decisions.md OQ-5).
+- **Phase 1 API access (decisions.md OQ-13 and "Additional rules"):** the approver is a configured local user name (`APPROVER_USER`, no login screen), recorded as `decided_by` with `decided_at` on every approval. The API port is `API_PORT` (OQ-30) and `DASHBOARD_ORIGIN` is the one origin CORS allows. Real authentication (Entra ID) is designed in `docs/api.md` section 10.2, marked UNVERIFIED, and built after live access exists. Because the approver identity is not authenticated, the API applies these measures before any handler (details and error codes in `docs/api.md` section 10.1; tested by TR-13): bind **127.0.0.1 only** (the bind address is deliberately not a setting); check `Host` and `Origin` (a foreign or `null` Origin is refused); CORS limited to `DASHBOARD_ORIGIN`, never `*`; `Content-Type: application/json` plus the `X-CRM-Token` header on writes; and a **random per-run token** (`X-CRM-Token`) generated when the API starts, **held in memory only, never in `.env`**, never logged, written to a file or put in a test fixture, compared in constant time. The token is deliberately not a config key. Clients fetch it from `GET /session` and send it in `X-CRM-Token` (hld.md OQ-33). These stop a web page in the same browser; they do **not** stop other programs on the same machine. Never expose the Phase 1 API beyond localhost.
+- `STALE_LEAD_DAYS` is the `stale_leads` threshold (decisions.md OQ-12; starting value 14).
 - `MODEL_PROVIDER` takes `ollama` | `foundry` | `azure_openai`. `FOUNDRY_*` are the framework's own variable names; `AZURE_OPENAI_API_VERSION` and the whole live path are UNVERIFIED.
 - Graph auth keys (certificate path, managed identity, notification URL, `clientState`) are **not added**: they depend on D7 and D8, to be confirmed with IT.
 - Adding a setting means adding its key to `example.env` in the same change.

@@ -16,7 +16,7 @@ description: Core rules for the CRM Agents project (R1-R12 from REQUIREMENTS.md)
 
 1. `REQUIREMENTS.md`
 2. `inputs/decisions.md` (confirmed decisions)
-3. `docs/architecture/eraser-code.txt` (authoritative; `architecture.png` is a rendered copy for humans)
+3. `docs/architecture/eraser-code.txt` (authoritative; `decisions.md` says no rendered image is kept in the repository)
 4. `inputs/references.md` (the only allowed authority for Agent Framework, Foundry/Azure OpenAI, Ollama, Graph, taste-skill, graphify)
 5. `inputs/crm_scheduling_agents_project_description.txt` is background only.
 
@@ -53,7 +53,10 @@ Python backend (D1); React + Vite + TypeScript (D2); SQLite locally behind `CrmR
 
 - Stages: Initial Lead, Engagement, Presentation/Follow-up, Converted, Not Converted. Every change is recorded in stage history (previous, new, timestamp, reason, source email).
 - Scheduling outcomes, exactly one of: `recommend_slots`, `counter_propose`, `request_clarification`, `update_existing_meeting`.
-- Simulated clock for the dataset: `2026-10-16T10:00:00` in `America/Chicago`. Scheduling policy comes from `config/team.json`, never hardcoded.
+- Simulated clock for the dataset: `2026-10-16T10:00:00` in `America/Chicago`; `SIMULATED_NOW` and `SIMULATED_TZ` in the environment override `organization.simulationNow` in `config/team.json`. The clock decides which emails have arrived and which offered times are past; relative dates resolve against the email's sent date (FR-SCH-2).
+- Scheduling request states (FR-SCH-12): `pending`, `approved`, `rejected`, `superseded`, `cancelled`, `expired`, `needs_review`. Scheduling **policy** comes from `config/team.json`; **working hours** come from the `CalendarProvider` per user (default 08:00-17:00 Mon-Fri `America/Chicago`). Neither is hardcoded.
+- All design questions OQ-1 to OQ-33 and the API safety rules are resolved in `inputs/decisions.md` (its OQ numbers refer to `docs/hld.md` section 12). Anything not listed there is resolved, and then recorded in that file, when the slice that needs it starts; `docs/hld.md` section 12.2 lists what is still open and which slice needs it. Audit goes through `CrmRepository`; after approval the Orchestrator's approval handler books and sends (see `crm-provider-pattern`).
+- Approval fields (REQUIREMENTS section 9): `decision` is `approve` or `reject`; `decided_by`, `decided_at`; approval progress is `not_started`, `in_progress`, `completed` or `partially_completed`; each approval step's result is an `AgentRun` linked to the request. Editing changes only the draft text and is an audit entry. Tests TR-10 to TR-13 cover request lifecycle, approval re-check, approval failure and API safety (see `crm-testing-smoke`).
 
 ## Do not
 

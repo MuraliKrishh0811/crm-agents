@@ -25,7 +25,9 @@ The framework's `OllamaChatClient` (`agent-framework-ollama 1.0.0b261015`) is an
 
 ## Prompt and context discipline
 
-- Send **only the new email text** (quoted history already stripped, FR-ING-2) plus a **brief customer summary** (current stage, last next action, short engagement summary). Never the full thread or history.
+- The classifier input is fixed by FR-CLS-1 (decisions.md OQ-19): the **new email text** (quoted history already stripped, FR-ING-2) plus the **current stage, the running summary, and the most recent engagement entries, bounded to fit the context window**. Never the full thread or the full history.
+- **Bounding is deterministic code, not the model:** derive a token budget from `OLLAMA_NUM_CTX` minus the system prompt, the schema and room for the output; always keep the new text, current stage and running summary; fill what remains with the newest engagement entries, newest first. Log what was included and dropped (counts, not bodies). The exact trimming rule and token counting method are a Slice 2 implementation detail to verify with `ollama ps` and real runs; do not assume a tokenizer from memory.
+- Other agents (summary, scheduler text tasks) get only the inputs they need, same budget rule.
 - Short system prompts. Put the output JSON schema in the prompt as a string and also pass it as `format` (docs: "ideal to also pass the JSON schema as a string in the prompt").
 - Set the context window **explicitly** with `options={"num_ctx": ...}` from config; do not rely on the default. Docs conflict (FAQ: 4096; context-length page: VRAM-based, under 24 GiB gives 4k), so confirm the real value with `ollama ps` (CONTEXT, PROCESSOR columns) on this machine. Keep it small; larger contexts cost memory, and CPU offload means it is too big.
 - Temperature `0` for classification and extraction (docs tip).

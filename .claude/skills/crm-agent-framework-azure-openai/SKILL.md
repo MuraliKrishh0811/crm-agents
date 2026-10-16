@@ -57,9 +57,60 @@ Source: https://github.com/microsoft/agent-framework/blob/main/python/CHANGELOG.
 - 1.18.0 [BREAKING]: Lab removed from `core[all]`; foundry supports Azure AI Projects through 2.6 with OpenAI 3.x.
 - No entry in that range renames `Agent` or `FoundryChatClient`. Re-read the changelog before any version bump.
 
-## TODO / not yet researched
+## Authentication, tracing and request configuration (implemented, unverified)
 
-Auth for production (docs warn that `DefaultAzureCredential` needs care; REQUIREMENTS section 12 prefers managed identity; `AzureCliCredential` in snippets is a developer convenience); App Insights and Foundry tracing wiring; retry/timeout options on the clients; the `FOUNDRY_*` / `AZURE_OPENAI_*` env names are the framework's, ours are mapped from `example.env` explicitly rather than relying on framework env fallback.
+Research checked against official docs and framework source on 2026-10-16. These are reference API shapes for the live adapter, not live verification; confirm them against the pinned packages during implementation.
+
+### Authentication
+
+Use an explicit credential: `AzureCliCredential()` for local development with live access; `ManagedIdentityCredential()` for a system-assigned identity in Azure, or `ManagedIdentityCredential(client_id=managed_identity_client_id)` for a user-assigned identity. Import from `azure.identity.aio` for async adapters and close the credential at shutdown. Pass it as `credential` to either live client. Do not silently fall back to developer credentials in production. Microsoft recommends a specific production credential instead of an unrestricted `DefaultAzureCredential` chain. Hosting and identity selection remain deferred under D8; confirm resource authorization with IT. [Credential-chain guidance](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/credential-chains), [managed identity guidance](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/user-assigned-managed-identity).
+
+### App Insights and Foundry tracing
+
+Configure telemetry once at startup, only for the live path. Add and lock `azure-monitor-opentelemetry` separately when implementing this integration; it is not in the six-package install set above. Current docs recommend `>=1.8.10,<2` for HTTPX trace correlation.
+
+- Foundry: connect the project to Application Insights, then call `await client.configure_azure_monitor(enable_live_metrics=False)` before creating/running the agent. The client obtains the project's connection string.
+- Standalone Azure OpenAI: pass the configured Application Insights connection string explicitly:
+
+```python
+from azure.monitor.opentelemetry import configure_azure_monitor
+from agent_framework.observability import enable_instrumentation
+
+configure_azure_monitor(
+    connection_string=applicationinsights_connection_string,
+    enable_live_metrics=False,
+)
+enable_instrumentation(enable_sensitive_data=False)
+```
+
+For Foundry, also call `enable_instrumentation(enable_sensitive_data=False)` after its setup. Do not additionally call `configure_otel_providers()` when Azure Monitor owns the providers. Attach the application's run ID to its parent span and structured logs. Keep prompts, mail bodies and model responses out of telemetry. Standalone agents need registration with the same OpenTelemetry agent ID to appear in Foundry. [Observability setup](https://learn.microsoft.com/en-us/agent-framework/agents/observability).
+
+### Timeouts and retries
+
+`OpenAIChatClient` accepts `timeout` in seconds and an injected SDK client via `async_client`; `max_retries` is an SDK setting, not a framework constructor argument. `FoundryChatClient` creates its SDK client through `AIProjectClient.get_openai_client()` and exposes neither timeout nor retry constructor parameters. Both use the inherited public `client` attribute. Configure the SDK client once, before requests:
+
+```python
+client.client = client.client.with_options(
+    timeout=request_timeout_s,
+    max_retries=transport_max_retries,
+)
+```
+
+Validate a finite positive timeout and a nonnegative integer retry count in application config. The SDK retries connection failures, 408, 409, 429 and 5xx responses with backoff; avoid another transport retry loop. Schema-validation retries belong to the adapter contract and need a separate bounded budget. Wrap the complete operation, including validation retries, in `asyncio.timeout(total_timeout_s)` to bound overall latency. Close SDK clients and credentials at shutdown; SDK copies share their HTTP transport. [OpenAI client source](https://github.com/microsoft/agent-framework/blob/main/python/packages/openai/agent_framework_openai/_chat_client.py), [Foundry client source](https://github.com/microsoft/agent-framework/blob/main/python/packages/foundry/agent_framework_foundry/_chat_client.py), [SDK retry and timeout configuration](https://github.com/openai/openai-python#retries).
+
+### Explicit environment mapping
+
+Read application configuration once and pass these constructor arguments explicitly. Reject missing or blank values for the selected live provider before client construction; leave live clients unconstructed for `MODEL_PROVIDER=ollama`.
+
+| Application variable in `example.env` | Constructor argument |
+|---|---|
+| `FOUNDRY_PROJECT_ENDPOINT` | `FoundryChatClient(project_endpoint=...)` |
+| `FOUNDRY_MODEL` | `FoundryChatClient(model=...)` |
+| `AZURE_OPENAI_ENDPOINT` | `OpenAIChatClient(azure_endpoint=...)` (also applies to `OpenAIChatCompletionClient`) |
+| `AZURE_OPENAI_DEPLOYMENT` | `model=...` on either Azure-routed OpenAI client; use the deployment name |
+| `AZURE_OPENAI_API_VERSION` | `api_version=...` on either Azure-routed OpenAI client |
+
+Pass `credential` explicitly as well. `AZURE_OPENAI_DEPLOYMENT` is our configuration name: do not rely on the framework's `AZURE_OPENAI_CHAT_MODEL`, `AZURE_OPENAI_CHAT_COMPLETION_MODEL` or `AZURE_OPENAI_MODEL` fallbacks. Do not pass `env_file_path` or load `.env`. Managed-identity selection, telemetry connection string and request budgets are additional application settings to document in `example.env` when the adapter is implemented; they are not existing entries. [Provider routing and environment names](https://learn.microsoft.com/en-us/agent-framework/integrations/by-component/model-providers/openai).
 
 ## Sources
 

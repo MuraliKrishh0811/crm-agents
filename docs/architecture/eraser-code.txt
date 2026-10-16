@@ -61,7 +61,7 @@ Agent Orchestrator > Stage Classifier Agent
 Agent Orchestrator > Summary and Next Action Agent
 Agent Orchestrator > Scheduler Agent
 Agent Orchestrator > CRM Writer Agent
-Ingestion Agent > Scheduler Agent: client slots parsed from email
+Ingestion Agent > Scheduler Agent: new email text
 
 // Agents to providers
 Ingestion Agent > Mail Provider
@@ -69,6 +69,10 @@ Scheduler Agent > Calendar Provider
 Stage Classifier Agent > Chat Model Provider
 Summary and Next Action Agent > Chat Model Provider
 Scheduler Agent > Chat Model Provider
+
+// After human approval, the orchestrator sends and books
+Agent Orchestrator > Mail Provider: send after approval
+Agent Orchestrator > Calendar Provider: create or update after approval
 
 // Primary paths
 Mail Provider > Microsoft Graph: primary
@@ -86,7 +90,7 @@ Chat Model Provider > Ollama Local Model: fallback
 CRM Writer Agent > CRM Repository
 CRM API > CRM Repository
 CRM Repository > CRM Store: adapter - Azure SQL, Dataverse or SQLite
+CRM Repository > Audit and Trace Store: audit entries
 
-// Audit and observability
-Agent Orchestrator > Audit and Trace Store
+// Observability
 Backend > App Insights

@@ -14,20 +14,24 @@ description: The provider pattern for CRM Agents - the four interfaces (MailProv
 
 ## Rule
 
-Agents (Ingestion, Stage Classifier, Summary and Next Action, Scheduler, CRM Writer) and the Orchestrator depend on the four provider interfaces only (R2). They never import Graph, Azure, Ollama, Agent Framework, file-system readers or a database driver. Configuration picks the implementation per provider; the active provider and model are recorded in the audit log for every call (FR-AUD-1, FR-CFG-1).
+Agents (Ingestion, Stage Classifier, Summary and Next Action, Scheduler, CRM Writer) and the Orchestrator depend on the four provider interfaces only (R2). There are **exactly four** provider interfaces; do not add a fifth (an audit or trace interface included). They never import Graph, Azure, Ollama, Agent Framework, file-system readers or a database driver. Configuration picks the implementation per provider; the active provider and model are recorded in the audit log for every call (FR-AUD-1, FR-CFG-1).
+
+**Audit goes through `CrmRepository`** (decisions.md OQ-1): audit entries are written through the repository into separate tables in the same database in Phase 1; the "Audit and Trace Store" in the diagram is that storage behind the repository.
+
+**Who sends and books (decisions.md OQ-2):** agents only **prepare drafts** (text stored on the scheduling request). After a person approves, the **Orchestrator's approval handler** calls `CalendarProvider` (create or update event) and `MailProvider.send_draft`. No agent calls `send_draft`, `create_event` or `update_event`. The handler calls `create_reply_draft` and then `send_draft` in its send step; before approval only the draft text exists on the request (decisions.md OQ-25). The Ingestion Agent passes only the cleaned new-email text to the Scheduler, which extracts the windows (OQ-11).
 
 ## Interfaces (language-neutral, from REQUIREMENTS section 6)
 
 ```
 MailProvider:      list_new_messages(since) -> [Email]; get_message(id) -> Email;
                    create_reply_draft(thread, body) -> DraftRef; send_draft(draft_ref)  # only after approval
-CalendarProvider:  get_availability(users, start, end) -> per-user [{start,end,showAs}];
+CalendarProvider:  get_availability(users, start, end) -> per user {working_hours, busy_blocks: [{start,end,showAs}]};
                    create_event(event) -> EventRef; update_event(event_key, changes) -> EventRef;
                    find_event(event_key) -> Event | None
 ChatModelProvider: complete(messages, output_schema) -> validated structured result  # validate; retry on malformed
 CrmRepository:     customers, contacts, emails, engagements, meetings, stage_history, next_actions,
                    scheduling_requests, audit entries
-                   + customers_by_stage, stale_leads, next_actions_due(range), customer_timeline(customer_id)
+                   + customers_by_stage, stale_leads(days), next_actions_due(range), customer_timeline(customer_id)
 ```
 
 ## Implementations
@@ -35,7 +39,7 @@ CrmRepository:     customers, contacts, emails, engagements, meetings, stage_his
 | Interface | Local (working, Phase 1) | Live (written from docs, UNVERIFIED, off by default) |
 |---|---|---|
 | MailProvider | Parses `.eml` (Message-ID, In-Reply-To, References, Date with offset, From/To/Cc, multipart, attachments); replays in date order against the simulated clock | Microsoft Graph (`crm-graph-integration`) |
-| CalendarProvider | Reads mock calendar JSON (Graph event shape, `showAs` values); **also persists meetings the system creates** so later availability sees them | Microsoft Graph |
+| CalendarProvider | Reads mock calendar JSON (Graph event shape, `showAs` values) including each user's `workingHours`; **also persists meetings the system creates** so later availability sees them | Microsoft Graph (working hours returned per user by Graph, UNVERIFIED). `get_availability` returns `working_hours` next to `busy_blocks` (REQUIREMENTS section 6; decisions.md OQ-28); a user without them gets the default 08:00-17:00 Mon-Fri `America/Chicago`. Outside the mock window the availability is unknown and not offerable (OQ-15). Local updates to events that came from the mock JSON go to a writable SQLite overlay merged over the read-only JSON (OQ-22) |
 | ChatModelProvider | Ollama `llama3.1:8b` (`crm-ollama-local-model`) | Foundry project endpoint or Azure OpenAI resource endpoint via Agent Framework (`crm-agent-framework-azure-openai`) |
 | CrmRepository | SQLite | Azure SQL or Dataverse (undecided, D3 defers); stays behind the interface |
 
@@ -60,7 +64,7 @@ Orchestrator + agents (our code: prompts, Pydantic output schemas, deterministic
 ## Idempotency and approval at the provider seam
 
 - `MailProvider` and `CrmRepository` dedupe on Message-ID (FR-ING-5); meetings on iCalUId or a stable internal key (R6). Replaying the full set twice yields identical CRM state (TR-6).
-- `send_draft`, `create_event`, `update_event` are called only from the approval path (R5, FR-APP-2).
+- `send_draft`, `create_event`, `update_event` are called only from the approval handler (R5, FR-APP-2), as recorded, idempotent, retryable steps after an availability re-check (FR-APP-4, FR-APP-5). Approving the same request twice creates no duplicates (R6, TR-6). The handler calls `create_reply_draft` and then `send_draft` in its send step (decisions.md OQ-25), and each step's result is recorded as an `AgentRun` audit entry through `CrmRepository` linked to the scheduling request (REQUIREMENTS section 9; TR-11, TR-12).
 - Anything local mode cannot truly produce (Teams join link) is stored with a `simulated` flag and shown as simulated (R10).
 
 ## Config switches (names from `example.env`)

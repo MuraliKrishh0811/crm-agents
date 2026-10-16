@@ -123,7 +123,7 @@ MailProvider
   send_draft(draft_ref)               -> void        # only after approval
 
 CalendarProvider
-  get_availability(users, start, end) -> per-user list of {start, end, showAs}
+  get_availability(users, start, end) -> per user: {working_hours, busy_blocks: [{start, end, showAs}]}
   create_event(event)                 -> EventRef    # online meeting if live
   update_event(event_key, changes)    -> EventRef    # reschedule / add attendee
   find_event(event_key)               -> Event | None
@@ -135,7 +135,7 @@ ChatModelProvider
 CrmRepository
   customers, contacts, emails, engagements, meetings,
   stage_history, next_actions, scheduling_requests, audit entries
-  + named queries: customers_by_stage, stale_leads,
+  + named queries: customers_by_stage, stale_leads(days),
     next_actions_due(range), customer_timeline(customer_id)
 ```
 
@@ -168,7 +168,7 @@ Configuration selects the implementation per provider. Optional: health-check fa
 
 ### Stage classification (Stage Classifier Agent)
 
-- `FR-CLS-1` Input: new email text plus customer history and current stage.
+- `FR-CLS-1` Input: new email text plus current stage, running summary, and recent engagement entries, bounded to fit the model's context window.
 - `FR-CLS-2` Output a schema-validated result: proposed stage, confidence, short reason, extracted facts (for example user count, current CRM, decision timeline, loss reason).
 - `FR-CLS-3` Do not change stage on an unanswered follow-up nudge or on historical dates mentioned in old emails.
 - `FR-CLS-4` Record the stage change and reason in stage history.
@@ -181,7 +181,7 @@ Configuration selects the implementation per provider. Optional: health-check fa
 ### Scheduling (Scheduler Agent)
 
 - `FR-SCH-1` Detect scheduling intent in an email.
-- `FR-SCH-2` Extract the customer's offered windows into structured slots with explicit time zone, resolving relative dates ("next Thursday") and converting to UTC. Do not trigger scheduling from historical times in old emails.
+- `FR-SCH-2` Extract the customer's offered windows into structured slots with explicit time zone, resolving relative dates ("next Thursday") and converting to UTC. Do not trigger scheduling from historical times in old emails. Resolve relative dates against the email's sent date in the sender's time zone. Use the simulated clock only to discard times already in the past. Determine the sender's time zone from the contact's stored zone; otherwise from an explicit zone in the email text; otherwise from candidates implied by the Date header offset plus hints in the text, validated in code. If still ambiguous, ask the customer to confirm instead of guessing.
 - `FR-SCH-3` If the request is vague (no concrete times), draft a clarification request and create nothing.
 - `FR-SCH-4` Select internal attendees from assignment rules (`config/team.json`), and add relevant CC'd customer contacts as external attendees.
 - `FR-SCH-5` Read availability via `CalendarProvider`; apply blocking rules from section 8.
@@ -191,12 +191,15 @@ Configuration selects the implementation per provider. Optional: health-check fa
 - `FR-SCH-9` For a reschedule request, find the existing meeting and update it (and add any new attendee). Never create a duplicate meeting.
 - `FR-SCH-10` A team member not assigned to the meeting must never block it.
 - `FR-SCH-11` Include a human-readable reason for every accepted and rejected slot in the scheduling request record.
+- `FR-SCH-12` A scheduling request has a state: pending, approved, rejected, superseded, cancelled, expired, or needs_review.
 
 ### Approval
 
-- `FR-APP-1` Present proposed slot(s), attendees, and the draft reply for approve / edit / reject.
-- `FR-APP-2` Only after approval: create or update the event, and send the confirmation draft.
+- `FR-APP-1` Present proposed slot(s), attendees, and the draft reply for approve, edit draft text, or reject. Editing changes only the draft text.
+- `FR-APP-2` Only after approval: create or update the event, create the confirmation reply as a mailbox draft, and send it.
 - `FR-APP-3` Record the approval decision, who made it, and when.
+- `FR-APP-4` At approval, re-check availability for the chosen slot. If a conflict appeared, do not book; mark needs_review with fresh options. After a conflict, approval progress returns to not_started. The approver then approves one of the fresh options or rejects.
+- `FR-APP-5` Approval runs as recorded, idempotent, retryable steps. A failure leaves the approval partially_completed with the failed step visible.
 
 ### CRM Writer
 
@@ -219,7 +222,7 @@ Configuration selects the implementation per provider. Optional: health-check fa
 
 ---
 
-## 8. Scheduling policy (source of truth: `config/team.json`)
+## 8. Scheduling policy (policy values: config/team.json; working hours: CalendarProvider)
 
 | Setting                     | Value                                                                                                     |
 | --------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -233,7 +236,7 @@ Configuration selects the implementation per provider. Optional: health-check fa
 | Max suggestions             | 3                                                                                                         |
 | Human approval              | always required                                                                                           |
 
-Read the values from `config/team.json`; do not hardcode them.
+Read policy values (durations, granularity, blocking rules, max suggestions) from config/team.json. Working hours come from the CalendarProvider per user (default 08:00-17:00 Mon-Fri America/Chicago if absent). Do not hardcode either.
 
 ---
 
@@ -246,9 +249,9 @@ Define these in the application's own domain model. CRM store adapters (SQLite, 
 - **EmailMessage**: Message-ID, thread identifiers, direction (received/sent), sender, to, cc, sent time and zone, subject, new body (quoted text removed), attachment names.
 - **Engagement**: id, customer id, type (email, meeting, note), summary, timestamp, source reference.
 - **Meeting**: id, customer id, event key (iCalUId), subject, start/end UTC, attendees (internal and external), join link (simulated flag), status, customer response status.
-- **StageHistory**: customer id, previous stage, new stage, timestamp, reason, source email.
+- **StageHistory**: customer id, previous stage, new stage, timestamp, reason, source (an email, or an approval).
 - **NextAction**: customer id, description, due date, status.
-- **SchedulingRequest**: customer id, trigger email, parsed customer slots, attendees considered, evaluated results with reasons, proposed slots, outcome type, approval status.
+- **SchedulingRequest**: customer id, trigger email, parsed customer slots, attendees considered, evaluated results with reasons, proposed slots, outcome type, draft reply, state (pending, approved, rejected, superseded, cancelled, expired, needs_review), decision (approve or reject), decided_by, decided_at, approval progress (not_started, in_progress, completed, partially_completed). Each approval step's result is recorded as an AgentRun audit entry linked to the request. Editing a request changes only the draft text and is recorded as an audit entry; it does not change the state. Also: fresh options (replace the proposed slots after a re-check conflict; the earlier slots are kept in an audit entry), state reason, and superseded_by (id of the newer request).
 - **AgentRun**: agent, input reference, output, provider, model, timestamp, duration, approval decision.
 
 ---
@@ -349,17 +352,21 @@ Provide:
 
 All tests live in a dedicated `tests/` folder.
 
-| ID     | Area                    | Requirement                                                                                                                                                          |
-| ------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TR-1` | Agents, exact-match     | Stage after every email matches `expected_outcomes.json`; customer matching; duplicate ignored; noise ignored; clarification requested for the vague Tailspin email. |
-| `TR-2` | Scheduling, exact-match | Each scenario (SCH-ADV, SCH-TAIL, SCH-WING) produces the expected outcome type and slots from section 10, including the DST trap and the non-blocking `free` event.  |
-| `TR-3` | Agents, qualitative     | Summaries and drafted replies scored against a written rubric (accuracy, completeness, tone, no invented facts). Use only for outputs with no single right answer.   |
-| `TR-4` | Backend                 | curl commands (and scripted equivalents) for every CRM API endpoint.                                                                                                 |
-| `TR-5` | Frontend                | Playwright scripts for pipeline view, customer timeline, scheduling panel, and the approve/edit/reject flow.                                                         |
-| `TR-6` | Idempotency             | Replaying the full email set twice yields identical CRM state.                                                                                                       |
-| `TR-7` | Contract                | Live Graph and Azure OpenAI providers tested against sample responses; labeled contract tests.                                                                       |
-| `TR-8` | Model accuracy          | Report stage-classification accuracy per run against the answer key.                                                                                                 |
-| `TR-9` | Smoke                   | See below.                                                                                                                                                           |
+| ID      | Area                    | Requirement                                                                                                                                                          |
+| ------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TR-1`  | Agents, exact-match     | Stage after every email matches `expected_outcomes.json`; customer matching; duplicate ignored; noise ignored; clarification requested for the vague Tailspin email. |
+| `TR-2`  | Scheduling, exact-match | Each scenario (SCH-ADV, SCH-TAIL, SCH-WING) produces the expected outcome type and slots from section 10, including the DST trap and the non-blocking `free` event.  |
+| `TR-3`  | Agents, qualitative     | Summaries and drafted replies scored against a written rubric (accuracy, completeness, tone, no invented facts). Use only for outputs with no single right answer.   |
+| `TR-4`  | Backend                 | curl commands (and scripted equivalents) for every CRM API endpoint.                                                                                                 |
+| `TR-5`  | Frontend                | Playwright scripts for pipeline view, customer timeline, scheduling panel, and the approve/edit/reject flow.                                                         |
+| `TR-6`  | Idempotency             | Replaying the full email set twice yields identical CRM state and approving the same request twice creates no duplicates.                                            |
+| `TR-7`  | Contract                | Live Graph and Azure OpenAI providers tested against sample responses; labeled contract tests.                                                                       |
+| `TR-8`  | Model accuracy          | Report stage-classification accuracy per run against the answer key.                                                                                                 |
+| `TR-9`  | Smoke                   | See below.                                                                                                                                                           |
+| `TR-10` | Request lifecycle       | Scheduling request state transitions (pending, superseded by a newer email, cancelled by a withdrawal, expired when all windows are past) match FR-SCH-12.           |
+| `TR-11` | Approval re-check       | A calendar conflict introduced after proposal makes approval return needs_review with fresh options and book nothing (FR-APP-4).                                     |
+| `TR-12` | Approval failure        | A forced failure in one approval step leaves partially_completed with the failed step visible; retrying completes without duplicates (FR-APP-5, R6).                 |
+| `TR-13` | API safety              | The approve endpoint rejects a foreign Origin, a missing X-CRM-Token header, and a wrong content type (R5).                                                          |
 
 **Smoke test** (run after every slice, must pass before moving on): start the system in local mode; replay all emails; assert each customer reaches its final stage from section 10; assert the three scheduling scenarios produce their expected outcomes both before approval (a pending request) and after approval (via the real approval endpoint); assert no duplicate records exist.
 
@@ -394,6 +401,7 @@ All tests live in a dedicated `tests/` folder.
 | D6  | Teams Copilot agent timing              | First release or after dashboard                                         | RESOLVED: after the web dashboard                                                                         |
 | D7  | Exact Graph permission set and approver | To be agreed with IT                                                     | DEFERRED: agree with IT later. Document needs, do not assume                                              |
 | D8  | Live hosting target                     | Not chosen                                                               | DEFERRED: out of Phase 1                                                                                  |
+| D9  | Agent orchestration                     | Plain Python, Agent Framework Workflows                                  | RESOLVED: plain Python behind an interface for Phase 1; revisit after live access                         |
 
 ---
 
@@ -417,7 +425,7 @@ Commit only when the slice's tests and the smoke test pass.
 - [ ] Full email set replays in local mode; every customer reaches its expected final stage.
 - [ ] SCH-ADV, SCH-TAIL, SCH-WING produce the expected outcomes.
 - [ ] Dashboard shows pipeline, timelines, scheduling panel with approval, and audit view.
-- [ ] `TR-1` to `TR-9` pass; stage-classification accuracy reported.
+- [ ] `TR-1` to `TR-13 pass`; stage-classification accuracy reported.
 - [ ] Live providers written, disabled by default, labeled `implemented, unverified`, with contract tests and the first-day checklist.
 - [ ] `example.env` present; no secrets anywhere; `.env` ignored.
 - [ ] Docs written: high-level design, low-level design, and a non-technical demo guide.
