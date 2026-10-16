@@ -60,9 +60,10 @@ Normalized `Email` (FR-ING-1): Message-ID; thread identifiers (In-Reply-To, Refe
 | `get_availability(users, start, end)` | Internal users, UTC range | Per user: `{working_hours, busy_blocks: [{start, end, showAs}]}` (requirements section 6; OQ-28) | Returns the user's working hours and events as the provider sees them. **Blocking rules are not applied here**; they are applied in `scheduling` (R4). `showAs` is one of `free`, `tentative`, `busy`, `oof`, `workingElsewhere`. **Working hours come from this provider per user** (OQ-6); a user without them gets the default. Outside the mock window (2026-10-19 to 2026-10-31) the availability is unknown and not offerable, reason "no calendar data" (OQ-15) |
 | `create_event(event)` | Subject, UTC start/end plus zone, internal and external attendees, online-meeting flag | `EventRef` (event key) | Idempotent on the event key (R6, OQ-9: local key derived from the scheduling request id; live stores the iCalUId from Graph). Local: persists the event so later availability sees it; join link generated and **marked simulated** (R10). Live: Teams online meeting (UNVERIFIED). Called only by the approval handler |
 | `update_event(event_key, changes)` | Event key, changes (new time, added attendees) | `EventRef` | Never creates a second event (FR-SCH-9). Local: updates to events that came from the mock JSON go to a writable SQLite overlay keyed by event key and merged over the read-only JSON on read; the dataset files never change (OQ-22). Called only by the approval handler |
+| `find_events(users, attendee_addresses, start, end)` | Assigned internal users, the external addresses from the trigger email (and its sender's domain as a fallback), a UTC range | `[Event]`, each with event key, start, end, status and attendee addresses | Added by D11 (requirements section 6, FR-SCH-9). **Local:** reads `attendees` and the event key (`iCalUId`) from the mock JSON, **merges the SQLite overlay** (OQ-22: updated events as updated, events the system created, cancelled status) and returns one `Event` per event key even when several attendees' calendars hold it. Returns only events that include an address from the given list as an attendee (case-insensitive); the domain fallback is applied by the caller with the same operation. Unknown outside the mock window (OQ-15). **Live:** Graph `calendarView` per user (`attendees` and `iCalUId` are properties of the event resource); **UNVERIFIED**, see the `crm-graph-integration` skill snippet `calendar-view-events.md` |
 | `find_event(event_key)` | Event key (iCalUId or stable internal key) | `Event` or none | Live lookup by iCalUId is **not documented** (see the `crm-graph-integration` skill and [first_day_with_access.md](first_day_with_access.md)); UNVERIFIED |
 
-Observed mock data shape (`calendars/mock_calendars.json`): per internal user a `workingHours` block (days, start, end, IANA zone) and an `events` list; each event has `id`, `iCalUId`, `subject`, `start` and `end` (`dateTime` plus IANA `timeZone`), `showAs`, `isAllDay`, `isOnlineMeeting`, `organizer`, `attendees`. The same meeting appears in each attendee's calendar with a different `id` and the same `iCalUId`, which matches keying meetings by iCalUId. A user without `workingHours` defaults to 08:00-17:00 Mon-Fri `America/Chicago` (OQ-6).
+Observed mock data shape (`calendars/mock_calendars.json`; `attendees` is a list of address strings, not Graph attendee objects, and there is no `isCancelled` field, so the local provider treats a missing value as not cancelled): per internal user a `workingHours` block (days, start, end, IANA zone) and an `events` list; each event has `id`, `iCalUId`, `subject`, `start` and `end` (`dateTime` plus IANA `timeZone`), `showAs`, `isAllDay`, `isOnlineMeeting`, `organizer`, `attendees`. The same meeting appears in each attendee's calendar with a different `id` and the same `iCalUId`, which matches keying meetings by iCalUId. A user without `workingHours` defaults to 08:00-17:00 Mon-Fri `America/Chicago` (OQ-6).
 
 ### 2.3 ChatModelProvider
 
@@ -111,6 +112,7 @@ The Scheduler agent uses the model for two text tasks only: (a) detect intent an
 2. **Cap** open-ended windows by each attendee's working hours (FR-SCH-6), taken from the `CalendarProvider` per user, default 08:00-17:00 Mon-Fri `America/Chicago` (OQ-6), returned by `get_availability` (OQ-28).
 3. **Select attendees** from assignment rules in `config/team.json`: `assignmentRules.byClientDomain` (internal members per customer domain) with a default; add relevant CC'd customer contacts as external attendees: CC'd external addresses at the customer's domain on the trigger email, shown to the approver before approval (FR-SCH-4; OQ-10).
 4. **Read availability** through `CalendarProvider` for **assigned internal attendees only**; an unassigned team member never blocks (FR-SCH-10).
+   **For a reschedule, locate the existing meeting first with `find_events`** (FR-SCH-9, D11), in plain code: candidates are upcoming (starting at or after the simulated now), non-cancelled events on the assigned attendees' calendars that include an external attendee address from the trigger email (From, To, Cc), falling back to the sender's domain read from that email; one match is the target (`update_existing_meeting`, `target_event_key` set); several are narrowed by the original meeting day the email mentions (the model extracts the phrase as text only; code resolves it with the sent-date rule of FR-SCH-2); anything else is `request_clarification` (a draft asking which meeting is meant), and nothing is created, never a duplicate. No customer names, event keys or dates from the dataset appear in this code (R8).
 5. **Apply blocking rules** from `schedulingPolicy`: hard `busy`, `oof`; soft `tentative` (lower-ranked fallback, always shown with a warning, never silently ignored); non-blocking `free`, `workingElsewhere` (FR-SCH-5).
 6. **Generate and rank** candidate slots of the meeting duration on the slot granularity, **at most 3** suggestions (FR-SCH-6); duration comes from the default durations by meeting type in policy. A tentative fallback is listed last with its warning (OQ-4).
 7. **Choose exactly one outcome**: `recommend_slots`, `counter_propose` (no overlap), `request_clarification` (no concrete times), `update_existing_meeting` (reschedule request) (FR-SCH-7).
@@ -287,19 +289,19 @@ Sent mail also updates engagement history (FR-ING-7); when the same message late
 
 **Stage 1: replay, no approval**
 
-1. Customer matched; James Carter is the customer contact in New York and Lisa Park is added as a contact (section 10; FR-ING-8). The customer is in **Presentation/Follow-up**; an existing walkthrough exists, event key `wingtip-walkthrough-20261022`, currently Oct 22 13:00-14:00 CT.
+1. Customer matched; James Carter is the customer contact in New York and Lisa Park is added as a contact (section 10; FR-ING-8). The customer is in **Presentation/Follow-up**; an existing walkthrough exists, event key `wingtip-walkthrough-20261022`, currently Oct 22 13:00-14:00 CT, with `james.carter@wingtiptoys.com` as its external attendee on Emily's and David's calendars (one event key).
 2. The Scheduler detects a **reschedule** request and extracts two windows: Wed Oct 21 after 15:00 EDT (open-ended) and Fri Oct 23 11:00-13:00 EDT.
 3. Code converts and caps with each attendee's working hours: Oct 21 becomes 14:00-17:00 CT (capped at 17:00); Oct 23 becomes 10:00-12:00 CT.
 4. Availability for Emily and David only. Evaluation:
    - Oct 21: **rejected**; Emily busy 14:00-15:30 and David busy 15:30-16:30 leave only 30 minutes, 60 are needed.
    - Oct 23: **selected 10:00-11:00 CT** (11:00-12:00 EDT). Traps: David's "Lunch" 11:30-12:30 is `showAs: free` and does not block; Raj is out of office that day but is not on this meeting and does not block (FR-SCH-10).
-5. Outcome **`update_existing_meeting`**; the request names the target event key, the new time and the attendee to add, `lisa.park@wingtiptoys.com`. `pending`; the event is unchanged; nothing is sent.
+5. `find_events` for Emily and David with the addresses on W06 (From James Carter, To Emily, Cc David and Lisa Park) returns **exactly one** upcoming event, the Oct 22 walkthrough (the same event key on both calendars counts once); it is the target. Outcome **`update_existing_meeting`**; the request names the target event key, the new time and the attendee to add, `lisa.park@wingtiptoys.com`. `pending`; the event is unchanged; nothing is sent.
 
 **Stage 2: approval handler**
 
 1. Record intent (decision `approve`, `decided_by`, `decided_at`; progress `in_progress`).
 2. Re-check availability for 10:00-11:00 CT on Oct 23; on a conflict, nothing changes and the request becomes `needs_review` (TR-11).
-3. `CalendarProvider.find_event(key)` finds the existing event; `update_event(key, changes)` moves it to Oct 23 10:00-11:00 CT and adds Lisa Park. No second event is created (FR-SCH-9). Locally the update goes to the SQLite overlay and never modifies the dataset files (OQ-22).
+3. `CalendarProvider.find_event(key)` re-reads the target event found at proposal time; `update_event(key, changes)` moves it to Oct 23 10:00-11:00 CT and adds Lisa Park. No second event is created (FR-SCH-9). Locally the update goes to the SQLite overlay and never modifies the dataset files (OQ-22).
 4. `MailProvider.create_reply_draft` then `send_draft`: the confirmation reply.
 5. CRM Writer: the updated `Meeting` (FR-CRM-2). The stage stays **Presentation/Follow-up**.
 
@@ -352,7 +354,7 @@ Permissions and the approver are to be confirmed with IT (D7); no permission set
 | Test | Targets |
 |---|---|
 | TR-1 | Ingestion, Stage Classifier, Scheduler clarification path, against `expected_outcomes.json` |
-| TR-2 | `scheduling` module and Scheduler outcomes for sections 7.3 to 7.5, including the DST trap and the non-blocking `free` event |
+| TR-2 | `scheduling` module and Scheduler outcomes for sections 7.3 to 7.5, including the DST trap and the non-blocking `free` event; **the reschedule lookup (FR-SCH-9, D11)**: the W06 case (exactly one match), several matches narrowed by the original meeting day, several matches not resolved, and no match, the last two giving a clarification request and never a second meeting |
 | TR-3 | Summaries and drafted replies, rubric-scored |
 | TR-4 | Every endpoint in [api.md](api.md) |
 | TR-5 | Dashboard pipeline, timeline, scheduling panel, approve/edit/reject |
@@ -367,4 +369,4 @@ Permissions and the approver are to be confirmed with IT (D7); no permission set
 
 ## 12. Design questions
 
-All design questions OQ-1 to OQ-33 are resolved; the decisions are in hld.md section 12.1 (and `inputs/decisions.md`). What is still open, by the slice that needs it, is in hld.md section 12.2; none blocks Slice 1 or Slice 2 except the TR-3 scorer decision, needed before the Slice 2 summary tests.
+All design questions OQ-1 to OQ-33 are resolved; the decisions are in hld.md section 12.1 (and `inputs/decisions.md`). What is still open, by the slice that needs it, is in hld.md section 12.2; none blocks Slice 1 or Slice 2 (the TR-3 scorer is decided in `decisions.md`).

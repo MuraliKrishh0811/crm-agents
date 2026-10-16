@@ -41,7 +41,7 @@ The choice is made on the first day with access and recorded in `docs/first_day_
 
 **Do not `pip install agent-framework`.** Its only dependency is `agent-framework-core[all]==1.22.0`, and the `all` extra includes `agent-framework-ollama`, which requires `ollama>=0.5.3,<0.5.4` and conflicts with the pinned `ollama==0.6.3` used by local mode (PyPI JSON metadata, read 2026-10-15; the same install note is in `inputs/references.md`).
 
-**Dependency dry-run (2026-10-16, project `.venv`, Python 3.14.4, pip 26.2.1):** `python -m pip install --dry-run` of exactly the six pins above exited 0 with no conflicts and no warnings, and did not resolve `agent-framework-ollama`. It resolved, among others, `openai` 3.31.0, `azure-ai-projects` 2.7.0, `pydantic` 2.14.1, `httpx` 0.28.1, `msgspec` 0.22.0. Transitive packages are not pinned by this set, so create a lock file in slice 1. A dry-run proves resolvability only, not that imports or behavior work: run `pip check` and a real import after the first install.
+**Dependency dry-run (2026-10-16, project `.venv` then on Python 3.14.4, pip 26.2.1; superseded by D10, the project now uses Python 3.13, so the real install and `pip check` in Slice 0 are the check that counts):** `python -m pip install --dry-run` of exactly the six pins above exited 0 with no conflicts and no warnings, and did not resolve `agent-framework-ollama`. It resolved, among others, `openai` 3.31.0, `azure-ai-projects` 2.7.0, `pydantic` 2.14.1, `httpx` 0.28.1, `msgspec` 0.22.0. Transitive packages are not pinned by this set, so create a lock file in Slice 0. A dry-run proves resolvability only, not that imports or behavior work: run `pip check` and a real import after the first install.
 
 ## Structured output
 

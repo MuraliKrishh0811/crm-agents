@@ -1,6 +1,6 @@
 ---
 name: crm-core-rules
-description: Core rules for the CRM Agents project (R1-R12 from REQUIREMENTS.md), the confirmed decisions D1-D9, and the working method (plan first, small slices, tests, commit gate). Use at the start of any planning, coding, review or commit in this repo, and whenever instructions seem to conflict or something is ambiguous.
+description: Core rules for the CRM Agents project (R1-R12 from REQUIREMENTS.md), the confirmed decisions D1-D10, and the working method (plan first, small slices, tests, commit gate). Use at the start of any planning, coding, review or commit in this repo, and whenever instructions seem to conflict or something is ambiguous.
 ---
 
 # CRM Agents: core rules
@@ -39,14 +39,14 @@ description: Core rules for the CRM Agents project (R1-R12 from REQUIREMENTS.md)
 
 ## Confirmed decisions (`inputs/decisions.md`)
 
-Python backend (D1); React + Vite + TypeScript (D2); SQLite locally behind `CrmRepository` (D3); Claude Code (D4); Ollama `llama3.1:8b` on a MacBook Air M4 with 16 GB RAM, name kept in `OLLAMA_MODEL`, `qwen3:8b` compared later via TR-8 (D5); Teams agent after the web dashboard (D6); Graph permission set and approver deferred to IT, written as "to be confirmed" in `docs/first_day_with_access.md` and never scoped in code (D7); hosting out of Phase 1 (D8); plain Python orchestrator behind an `Orchestrator` interface for Phase 1, with Agent Framework Workflows revisited once live access exists and the outcome recorded in `decisions.md` (D9).
+Python backend (D1); React + Vite + TypeScript (D2); SQLite locally behind `CrmRepository` (D3); Claude Code (D4); Ollama `llama3.1:8b` on a MacBook Air M4 with 16 GB RAM, name kept in `OLLAMA_MODEL`, `qwen3:8b` compared later via TR-8 (D5); Teams agent after the web dashboard (D6); Graph permission set and approver deferred to IT, written as "to be confirmed" in `docs/first_day_with_access.md` and never scoped in code (D7); hosting out of Phase 1 (D8); plain Python orchestrator behind an `Orchestrator` interface for Phase 1, with Agent Framework Workflows revisited once live access exists and the outcome recorded in `decisions.md` (D9); Python 3.13, with Python 3.14 not used (D10).
 
 ## Working method (`CLAUDE.md`)
 
 - Read `REQUIREMENTS.md` and `inputs/decisions.md` before any planning or coding. Reference requirement IDs (`FR-SCH-3`, `TR-2`) in plans, tests and commit messages.
 - Make a plan first and wait for approval. Work in small vertical slices (order in REQUIREMENTS section 16); run tests after each.
 - Verify Microsoft Graph, Agent Framework, Azure OpenAI/Foundry and Ollama details against current official docs listed in `inputs/references.md`. Record URL, library version and retrieval date next to the code that uses them. Mark anything unverified `UNVERIFIED`. Never rely on memory.
-- Commit only when the slice's tests and the smoke test pass.
+- Commit points: only when the slice's tests and the smoke test pass. **The owner makes all commits**: at each commit point show `git status`, propose a message with requirement IDs and wait; never commit.
 - Pin exact versions (no ranges). Do not upgrade without a reason recorded in `decisions.md`.
 
 ## Domain constants

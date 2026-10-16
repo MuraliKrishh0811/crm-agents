@@ -14,7 +14,7 @@ description: Testing and smoke-testing plan for CRM Agents - tests/ structure (a
 
 ## Commit gate
 
-A slice is done when its tests and the smoke test pass (R11). Commit only then, referencing requirement IDs. Run tests after every small step.
+A slice is done when its tests and the smoke test pass (R11). Commit points exist only then. **The owner makes all commits**: show `git status`, propose a message that cites requirement IDs, and wait. Run tests after every small step. **Test runner: pytest** (approved in `decisions.md`; pinned in `inputs/references.md` as 9.1.1, test-only). Run skipped-test reasons visibly (`-rs`).
 
 ## `tests/` structure (folders exist, empty)
 
@@ -33,8 +33,8 @@ Suggested files (finalize in each slice's plan): `agents/test_stage_exact.py` (T
 | ID | What | How |
 |---|---|---|
 | TR-1 | Stage after every email, customer matching, duplicate F08b ignored, noise ignored, vague Tailspin email gets a clarification | Exact match against `data/synthetic/expected/expected_outcomes.json` |
-| TR-2 | SCH-ADV, SCH-TAIL, SCH-WING outcome type and slots, incl. DST trap and non-blocking `free` event | Exact match against the key and section 10 |
-| TR-3 | Summaries and drafted replies (no single right answer) | **Written rubric**: accuracy, completeness, tone, no invented facts. Store rubric files in `tests/agents/rubrics/`; record per-criterion scores per run. Scorer (human spot-check vs a judge model) and pass threshold are **open, ask the user**; llama3.1:8b as its own judge is weak |
+| TR-2 | SCH-ADV, SCH-TAIL, SCH-WING outcome type and slots, incl. DST trap and non-blocking `free` event; **the reschedule lookup (FR-SCH-9, D11)**: W06 one match, several matches narrowed by day, several unresolved, no match (clarification, never a duplicate) | Exact match against the key and section 10; lookup cases built by the test (temporary calendar copy or the provider's `create_event`), never by editing the dataset |
+| TR-3 | Summaries and drafted replies (no single right answer) | **Two layers (decisions.md, TR-3 scorer):** *gating*, deterministic checks that every date, name, number and company in a generated summary or draft appears in the source emails or CRM record and that required facts are present (must pass); *advisory*, a rubric score (accuracy, completeness, tone, actionability, 1 to 5) from the local model with a baseline recorded on the first run and regressions reported (never gates a slice). Rubric files in `tests/agents/rubrics/`; baselines in `tests/agents/baselines/`. The owner reads a sample of drafts before demos. llama3.1:8b as its own judge is weak; revisit with a stronger judge once live access exists |
 | TR-4 | Every CRM API endpoint | A `curl` command and a scripted equivalent per endpoint, run against the running local system |
 | TR-5 | Pipeline view, customer timeline, scheduling panel, approve/edit/reject | **Playwright** scripts. TODO: Playwright is not in `inputs/references.md`; verify against its official docs before writing, no snippets from memory |
 | TR-6 | Idempotency | Replay the full email set twice: CRM state identical. **And** approve the same request twice: no duplicates (section 13 TR-6 now says both) |
@@ -49,6 +49,8 @@ Suggested files (finalize in each slice's plan): `agents/test_stage_exact.py` (T
 Rules: tests may read the answer key, production code must not (R8). Add a guard test that fails if production code references the answer-key path or dataset client names. Never edit the dataset or key to make a test pass. LLM-dependent tests are non-deterministic: do not loosen exact-match; record the failure and the accuracy number.
 
 ## Smoke test (TR-9), run after every slice
+
+**Staged (decisions.md):** from Slice 1 on there is **one** smoke test, `tests/smoke/test_smoke.py`, covering everything built so far. An assertion that cannot exist yet appears as an explicit `not yet implemented (Slice N)` skip that shows in the output (`pytest -rs`), **never a silent pass**. It is complete, with no skips, at Slice 4d, where part (b) goes through the real approval endpoint. Before Slice 4d, approval in part (b) goes through `Orchestrator.approve` (the handler itself, never a direct repository or provider call).
 
 Section 10 defines "final stage" as the state **after replaying all emails and before any human approval**. Approval is a separate action, so the smoke test has two parts that run in order against one system instance.
 

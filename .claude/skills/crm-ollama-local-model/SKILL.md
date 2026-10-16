@@ -46,7 +46,7 @@ By default models unload after 5 minutes (docs). So:
 
 - Send a **warm-up call at startup** and as the **first step of the smoke test** (`crm-testing-smoke`), before replaying any email, so the first real call is not a cold load.
 - Set `keep_alive` from config so the model stays loaded during a replay (accepts a duration string, seconds, or a negative number; `0` unloads; the API parameter overrides `OLLAMA_KEEP_ALIVE`).
-- Docs show the preload only as an empty `/api/chat` HTTP request. **TODO (slice 1):** the Python equivalent is undocumented; test an empty-`messages` `chat(model=..., keep_alive=...)` against ollama 0.6.3, or fall back to a minimal real chat call. Do not claim it works until run.
+- Docs show the preload only as an empty `/api/chat` HTTP request. **TODO (Slice 0, the warm-up test):** the Python equivalent is undocumented; test an empty-`messages` `chat(model=..., keep_alive=...)` against ollama 0.6.3, or fall back to a minimal real chat call. Do not claim it works until run.
 - Check readiness with `ollama ps` / `ollama.ps()`; surface a clear error if Ollama is down or the model is not pulled (`ollama.ResponseError`, 404 means pull the model).
 
 ## Accuracy reporting (TR-8)

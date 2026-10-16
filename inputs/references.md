@@ -15,6 +15,8 @@
 | Claude Code settings                  | https://code.claude.com/docs/en/settings                                   | Old docs.claude.com URL redirects here.                                                           |
 | Taste skill (UI quality)              | https://github.com/Leonxlnx/taste-skill                                    | v2.0.0, commit f624f37. Reference only.                                                           |
 | Graphify (context management)         | https://github.com/Graphify-Labs/graphify                                  | graphifyy 0.9.91 (PyPI, double y). No GitHub releases. Reference only.                            |
+| pytest (PyPI)                         | https://pypi.org/project/pytest/                                           | pytest 9.1.1 (test-only dependency)                                                               |
+| pytest docs                           | https://docs.pytest.org/en/latest/                                         |                                                                                                   |
 
 Rules:
 
@@ -24,3 +26,5 @@ Rules:
 - Pin exact versions (no ranges). Do not upgrade without a reason recorded in decisions.md.
 
 Install note: do not install the agent-framework meta-package. It pulls in agent-framework-ollama, which requires ollama<0.5.4. Install the exact set: agent-framework-core 1.22.0, agent-framework-foundry 1.15.0, agent-framework-openai 1.17.0, azure-identity 1.26.0, ollama 0.6.3, msgraph-sdk 1.64.0.
+
+Test-only: pytest 9.1.1. Not part of the runtime install set.

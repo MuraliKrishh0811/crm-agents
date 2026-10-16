@@ -41,6 +41,7 @@ Have the model draft prose around placeholders and let code fill slot times in t
 4. Convert each window to UTC; cap open-ended windows by each attendee's working hours (from the `CalendarProvider`); read availability through `CalendarProvider`; apply blocking rules (FR-SCH-5, FR-SCH-6).
 5. Intersect in code, split into granularity slots of the meeting duration, rank, keep at most 3. Fallback slots with tentative attendees rank lowest and carry a warning.
 6. Outcome, exactly one of `recommend_slots`, `counter_propose` (no overlap; 2 or 3 mutual slots in the customer's zone within stated preferences; no meeting created), `request_clarification`, `update_existing_meeting` (find and update the existing event, add new attendees, never create a duplicate) (FR-SCH-7 to FR-SCH-9).
+   **Locating the meeting to reschedule (FR-SCH-9, decisions.md D11), plain code:** call `CalendarProvider.find_events` for the assigned attendees; keep upcoming (at or after the simulated now), non-cancelled events that include an external attendee address from the trigger email (From, To, Cc), falling back to the sender's domain read from that email at run time; exactly one match is the target; several are narrowed by the original meeting day the email mentions (the model extracts the phrase as text only; code resolves it with the sent-date rule); otherwise the outcome is `request_clarification` and **nothing is created**. Never match on customer names, event keys or dates from the dataset (R8). Events held on several attendees' calendars share one event key and count once.
 7. Store a human-readable reason for every accepted and rejected slot (FR-SCH-11).
 
 ## Approval and idempotency
@@ -54,7 +55,7 @@ Nothing is booked, updated or sent until a person approves (R5, FR-APP-1 to 3); 
 
 ## Test oracles (tests only, never production)
 
-SCH-ADV (DST trap, tentative fallback), SCH-TAIL (no overlap, counter-propose, out-of-office, vague first email), SCH-WING (reschedule existing event, `showAs: free` lunch does not block, unassigned team member out of office does not block). Exact expected slots live in REQUIREMENTS section 10 and `data/synthetic/expected/expected_outcomes.json`. Production code must not mention client names, email IDs or dataset dates (R8); if the data or key looks wrong, tell the user, do not change them.
+SCH-ADV (DST trap, tentative fallback), SCH-TAIL (no overlap, counter-propose, out-of-office, vague first email), SCH-WING (reschedule existing event located by `find_events`, `showAs: free` lunch does not block, unassigned team member out of office does not block). Also test the lookup itself: the W06 case (one match), several matches narrowed by day, several unresolved, and no match (clarification, never a duplicate). Exact expected slots live in REQUIREMENTS section 10 and `data/synthetic/expected/expected_outcomes.json`. Production code must not mention client names, email IDs or dataset dates (R8); if the data or key looks wrong, tell the user, do not change them.
 
 ## Graph note
 

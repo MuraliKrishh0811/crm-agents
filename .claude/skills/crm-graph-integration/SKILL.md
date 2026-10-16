@@ -31,6 +31,7 @@ The permission set, app-only vs delegated split, and approver are decided with I
 | `create_event` | create event with `isOnlineMeeting` and `teamsForBusiness` (join link comes from the response) | [create-event-teams-meeting.md](snippets/create-event-teams-meeting.md) |
 | `update_event` | PATCH event (move time, add attendee) | [update-event.md](snippets/update-event.md) |
 | `find_event` | **no documented iCalUId lookup found** (TODO below) | |
+| `find_events` (D11, FR-SCH-9) | `GET /users/{id}/calendarView?startDateTime=&endDateTime=` returns event objects (event resource has `attendees` and `iCalUId`); whether `attendees` is returned without `$select`, and whether `Calendars.ReadBasic` includes it, are **UNVERIFIED**; address matching is done in our code | [calendar-view-events.md](snippets/calendar-view-events.md) |
 | client/auth | credential + `GraphServiceClient` | [auth-and-client.md](snippets/auth-and-client.md) |
 
 ## Findings from the 2026-10-15 read
@@ -42,7 +43,7 @@ The permission set, app-only vs delegated split, and approver are decided with I
 
 ## TODO (do not write from memory; verify on the first day with access)
 
-1. Lookup of an event by `iCalUId` (needed for `find_event`, R6). Not found on the event resource, get, list or update pages.
+1. Lookup of an event by `iCalUId` (needed for `find_event`, R6). Not found on the event resource, get, list or update pages. (`find_events` does not need it: it lists a time range with `calendarView`; see snippet and its TODO list, read 2026-10-16.)
 2. A documented PATCH body for reschedule (`start`, `end`, `attendees`); the update page's Python example is generic.
 3. How `transactionId` behaves on create retries (idempotency).
 4. Whether `In-Reply-To` and `References` are readable via `internetMessageHeaders` and the `$select` needed (FR-ING-3).

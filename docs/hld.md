@@ -4,7 +4,7 @@ Status: draft for review, updated 2026-10-16 after every design question (OQ-1 t
 
 Authority and terms:
 
-- `REQUIREMENTS.md` is authoritative. Decisions D1-D9 and the resolved design questions come from `inputs/decisions.md`. The architecture source is `docs/architecture/eraser-code.txt` (`decisions.md` says no rendered image is kept in the repository).
+- `REQUIREMENTS.md` is authoritative. Decisions D1-D10 and the resolved design questions come from `inputs/decisions.md`. The architecture source is `docs/architecture/eraser-code.txt` (`decisions.md` says no rendered image is kept in the repository).
 - Terms follow `REQUIREMENTS.md` and the project skills in `.claude/skills/`. IDs (`FR-`, `TR-`, `R`) are cited where relevant.
 - Anything about live Microsoft Graph, Entra ID or Azure OpenAI/Foundry behavior is marked **UNVERIFIED**: it is written from documentation and has never run against a service (section 18 of the requirements).
 - This document makes no new decisions. `OQ-n` numbers match `inputs/decisions.md`, which points here. All of OQ-1 to OQ-33 are resolved and shown in section 12.1; section 12.2 lists what is still open, with the slice that needs each item; section 13 records the inconsistencies found in the inputs and how they were resolved. Companion documents: [lld.md](lld.md), [api.md](api.md), [demo.md](demo.md), [first_day_with_access.md](first_day_with_access.md).
@@ -86,6 +86,7 @@ CalendarProvider
   create_event(event)                 -> EventRef    # online meeting if live
   update_event(event_key, changes)    -> EventRef    # reschedule / add attendee
   find_event(event_key)               -> Event | None
+  find_events(users, attendee_addresses, start, end) -> [Event]   # events with attendees and event key; used to locate an existing meeting for a reschedule (D11)
 
 ChatModelProvider
   complete(messages, output_schema)   -> validated structured result   # validate; retry on malformed output
@@ -131,7 +132,7 @@ The system has **two separate stages**. Replay never books or sends anything; bo
 2. **Ingestion Agent**: normalize to one `Email` (FR-ING-1); strip quoted history (FR-ING-2); drop exact duplicates by Message-ID (FR-ING-5); ignore unrelated internal mail (FR-ING-6); match a customer by sender address, domain, CC contacts and thread identifiers, or create a new lead (FR-ING-3, FR-ING-4); add new contacts (FR-ING-8); store attachment metadata (FR-ING-9); handle sent and received mail alike (FR-ING-7). It passes **only the cleaned new-email text** on to the Scheduler (OQ-11, resolved).
 3. **Stage Classifier Agent**: input is the new email text plus the current stage, the running summary and the most recent engagement entries, **bounded to fit the context window** (FR-CLS-1; OQ-19, resolved). Output is schema-validated (FR-CLS-2). No change on an unanswered nudge or on historical dates (FR-CLS-3). A stage change is recorded with reason and source (FR-CLS-4).
 4. **Summary and Next Action Agent**: update the running summary and propose a next action (FR-SUM-1, FR-SUM-2).
-5. **Scheduler Agent**, when scheduling intent is detected (FR-SCH-1): **it extracts the offered windows itself** (FR-SCH-2; OQ-11), resolving relative dates ("next Thursday") against **the email's sent date in the sender's time zone** and using the simulated clock only to discard times already in the past (OQ-5, resolved). The sender's zone is the contact's stored zone; else an explicit zone in the email text; else candidates from the `Date` header offset plus hints in the text, **validated in code**; if still ambiguous the customer is asked to confirm (FR-SCH-2; OQ-7, resolved). It evaluates availability in code using each attendee's working hours from the `CalendarProvider` (OQ-6, resolved), chooses exactly one outcome (FR-SCH-7), and stores a scheduling request in state `pending` with reasons for every accepted and rejected slot and a **prepared draft reply** (FR-SCH-11; OQ-3). It writes nothing to calendar or mail.
+5. **Scheduler Agent**, when scheduling intent is detected (FR-SCH-1): **it extracts the offered windows itself** (FR-SCH-2; OQ-11), resolving relative dates ("next Thursday") against **the email's sent date in the sender's time zone** and using the simulated clock only to discard times already in the past (OQ-5, resolved). The sender's zone is the contact's stored zone; else an explicit zone in the email text; else candidates from the `Date` header offset plus hints in the text, **validated in code**; if still ambiguous the customer is asked to confirm (FR-SCH-2; OQ-7, resolved). It evaluates availability in code using each attendee's working hours from the `CalendarProvider` (OQ-6, resolved), chooses exactly one outcome (FR-SCH-7), and stores a scheduling request in state `pending` with reasons for every accepted and rejected slot and a **prepared draft reply** (FR-SCH-11; OQ-3). **For a reschedule it locates the existing meeting with `CalendarProvider.find_events`** (FR-SCH-9, D11): upcoming, non-cancelled events on the assigned attendees' calendars that include an external attendee address from the trigger email (falling back to the sender's domain); exactly one match is the target, several are narrowed by the original meeting day mentioned in the email, and otherwise the outcome is a clarification request and nothing is created. It writes nothing to calendar or mail.
 6. **Request lifecycle at arrival (OQ-16, resolved):** a newer email in the same thread that offers new times sets the earlier pending request to `superseded`; a withdrawal sets it to `cancelled`; a request whose offered windows are all past by the simulated clock becomes `expired`. Old requests are kept for audit. The clock stays fixed at `SIMULATED_NOW` for a run (OQ-24), so a test that needs a request to expire injects a later clock (TR-10).
 7. **CRM Writer Agent**: persist everything through `CrmRepository` only (FR-CRM-1).
 8. **Orchestrator**: write an audit entry per agent run through `CrmRepository`; on a failure, record it and continue.
@@ -149,7 +150,7 @@ A person reviews the proposed slot(s), attendees and draft reply (FR-APP-1, FR-U
 On **approve**, the Orchestrator's approval handler runs **recorded, idempotent, retryable steps** (FR-APP-5; OQ-20, resolved). It records the intent first (decision, `decided_by`, `decided_at`, approval progress `in_progress`), then runs in order:
 
 1. **Re-check availability** for the chosen slot (FR-APP-4; OQ-18, resolved; TR-11). If a conflict has appeared, **do not book**: mark the request `needs_review` with fresh options and stop. For `counter_propose` and `request_clarification` there is no chosen slot, so the step is recorded as not applicable (OQ-29).
-2. **Create or update the event**: `recommend_slots` creates it (online meeting; join link marked simulated locally); `update_existing_meeting` finds and updates the existing event and adds new attendees (FR-APP-2, FR-SCH-9).
+2. **Create or update the event**: `recommend_slots` creates it (online meeting; join link marked simulated locally); `update_existing_meeting` updates the existing event found at proposal time with `find_events` (the request carries its event key; `find_event(key)` re-reads it) and adds new attendees (FR-APP-2, FR-SCH-9).
 3. **Send the confirmation**: create the confirmation reply as a mailbox draft (`MailProvider.create_reply_draft`), then `send_draft` (FR-APP-2; OQ-25). For `counter_propose` and `request_clarification` this sends the prepared reply and creates no meeting.
 4. **Write the CRM updates**: meeting record (FR-CRM-2), stage change with source "an approval" (StageHistory source, OQ-3), the request state and decision.
 
@@ -202,8 +203,10 @@ Switching to live is a configuration change, not a rebuild (section 3). Live cod
 | D7 | Graph permission set and approver | Deferred to IT |
 | D8 | Live hosting target | Deferred, out of Phase 1 |
 | D9 | Plain Python orchestrator behind an `Orchestrator` interface; revisit Workflows after live access | Resolved (now also in requirements section 15) |
+| D10 | Python 3.13 (the venv is recreated on 3.13; Python 3.14 is not used) | Resolved (`decisions.md`) |
+| D11 | `CalendarProvider.find_events` added (requirements section 6); lookup rule as in FR-SCH-9; no customer names, event keys or dates from the dataset in production code (R8); the live Graph call is UNVERIFIED | Resolved (`decisions.md`, requirements section 6) |
 
-Pinned libraries are in `inputs/references.md` (exact versions, no ranges). A pip dry-run of the pinned set resolved without conflicts on 2026-10-16; it was not installed. The `agent-framework` meta-package must not be installed.
+Pinned libraries are in `inputs/references.md` (exact versions, no ranges). A pip dry-run of the pinned set on 2026-10-16 resolved without conflicts, but it ran on Python 3.14.4 before D10 chose 3.13 and nothing was installed; the real install on 3.13 and `pip check` are Slice 0. pytest is approved (`decisions.md`) and is pinned in `references.md` (9.1.1, test-only); pydantic, FastAPI, uvicorn, React, Vite, TypeScript and Playwright are approved in principle, each pinned at the start of the slice that needs it. The `agent-framework` meta-package must not be installed.
 
 ## 10. Traceability
 
@@ -270,14 +273,15 @@ Configuration keys that these decisions introduced are in `example.env`: `APPROV
 
 ### 12.2 Still open, with the slice that needs each item
 
-There is **no numbered design question left open**. `decisions.md` says any question not listed there is resolved when the slice that needs it starts and is then recorded in that file. The items below were already marked open or deferred in the inputs, the requirements or the skills; none is a new question and **none blocks Slice 1 or Slice 2**, with the one exception noted (the TR-3 scorer, needed before the Slice 2 TR-3 tests). Items marked "verify" are documentation checks that the requirements demand before the code that uses them (section 0 item 5).
+There is **no numbered design question left open**. `decisions.md` says any question not listed there is resolved when the slice that needs it starts and is then recorded in that file. The items below were already marked open or deferred in the inputs, the requirements or the skills; none is a new question and **none blocks Slice 1 or Slice 2**. Items marked "verify" are documentation checks that the requirements demand before the code that uses them (section 0 item 5).
 
 | Item | Source | Slice that needs it | What is needed |
 |---|---|---|---|
 | Python `zoneinfo` usage (and the need for the `tzdata` package) | `crm-scheduling-time-zones` skill | 3 (zone conversion); 1 only if stored times are converted there | Verify against official Python docs before writing conversion code |
-| Python form of the Ollama warm-up call; exact `ollama` client usage for structured output | `crm-ollama-local-model` skill | 2 (model provider; smoke-test warm-up) | Verify against the `ollama` 0.6.3 docs before coding |
-| Lock file and a real `pip check` after the first install of the pinned set | `inputs/references.md`; dry-run only so far | 1 (first install) | Do after the first install |
-| TR-3 scorer (human spot-check or a judge model) and pass threshold | `crm-testing-smoke` skill ("ask the user") | 2 (summaries), 3 (drafts) | Your decision before the TR-3 tests are written |
+| Python form of the Ollama warm-up call | `crm-ollama-local-model` skill | **0** (the Slice 0 warm-up test; reused in 2a) | Verify against the `ollama` 0.6.3 README and Ollama docs before coding |
+| Exact `ollama` client usage for structured output | `crm-ollama-local-model` skill | 2 (2a, model provider) | Verify against the `ollama` 0.6.3 docs before coding |
+| Lock file and a real `pip check` after the first install of the pinned set | `inputs/references.md`; dry-run only so far | **0** (first real install, on Python 3.13) | Do in Slice 0 |
+| ~~TR-3 scorer and pass threshold~~ | `crm-testing-smoke` skill | **Decided in `decisions.md`** (TR-3 scorer paragraph: gating layer must pass, advisory layer never gates); implemented in 2d (summaries) and 3d (drafts) | Nothing left to decide; the work is in the plan |
 | Review of the taste skill and graphify contents before any install | `crm-ui-quality`, `crm-context-management` skills | 4 (taste skill); developer tool (graphify) | Read at the pinned versions, then decide; record in `decisions.md` |
 | Playwright usage | `crm-testing-smoke` skill (not in `references.md`) | 4 (TR-5) | Verify against Playwright docs before writing scripts |
 | `evaluated_results` entries per window or per slot | [api.md](api.md) section 7.1 | 3 (plan) | Decide in the Slice 3 plan |

@@ -13,6 +13,8 @@ REQUIREMENTS.md is the source of truth. Where this file differs, REQUIREMENTS.md
 - D7 Graph permissions: deferred. The permission set and approver are decided with IT when live access is requested. In Phase 1, write the permission needs into docs/first_day_with_access.md as "to be confirmed". Do not scope permissions in code.
 - D8 Hosting: deferred. Out of scope for Phase 1.
 - D9 Orchestration: plain Python orchestrator behind an Orchestrator interface for Phase 1. Revisit Agent Framework Workflows once live access exists and record the outcome. Reason: fixed pipeline with a human approval gate, easier to test, and the framework's workflow and Ollama packages are beta.
+- D10 Python version: 3.13. The project venv is created on Python 3.13 (the owner recreated it; 3.13.15 observed on 2026-10-16). Python 3.14 is not used.
+- D11 Wingtip event lookup (plan item 3c): add CalendarProvider.find_events(users, attendee_addresses, start, end) to REQUIREMENTS section 6. Lookup rule as in FR-SCH-9. No customer names, event keys or dates from the dataset in production code (R8). In live mode the Graph call that provides attendees and iCalUId is UNVERIFIED; check the Graph docs when writing the live provider.
 
 ## Authority and references
 
@@ -59,6 +61,10 @@ REQUIREMENTS.md is the source of truth. Where this file differs, REQUIREMENTS.md
 
 - API safety (api.md section 10.1): bind 127.0.0.1 only; Origin and Host checks; CORS limited to the dashboard origin (DASHBOARD_ORIGIN); JSON content type plus the X-CRM-Token header on approve; a random per-run token that is not stored in .env. Test: TR-13.
 - Approval idempotency (R6): approving the same request twice creates no duplicates.
+- Smoke test (staged): from Slice 1 on there is one smoke test, tests/smoke/test_smoke.py, covering everything built so far. Assertions that cannot exist yet appear as explicit "not yet implemented" skips in the output, never silent passes. It is complete, with no skips, at Slice 4d.
+- Test runner: pytest is approved. Its exact version is proposed from PyPI with its release date, spot-checked by the owner, and only then pinned in inputs/references.md. Approved in principle, each to be pinned at the start of the slice that needs it with the same propose-then-check step: pydantic (Slice 2), FastAPI and uvicorn (Slice 4), React, Vite, TypeScript and Playwright (Slice 4). Any other dependency needs a question first.
+- Commits: the owner makes all commits (the docs-only commit is tagged docs-baseline). At each commit point Claude shows git status, proposes a message and waits.
+- Dataset check (Slice 0): generate.py is run on a copy. calendars/mock_calendars.json, config/team.json and expected/expected_outcomes.json are compared byte for byte. The .eml files are compared by parsed headers, bodies and attachments, because Python's email library picks random multipart boundaries. The dataset is never changed.
 - Any question not listed here is resolved when the slice that needs it starts, and then recorded in this file.
 
 TR-3 scorer (Phase 1): two layers. Gating: deterministic checks that every date, name, number and company in a generated summary or draft appears in the source emails or CRM record, and that required facts are present. Must pass. Advisory: rubric score (accuracy, completeness, tone, actionability, 1-5) from the local model; record a baseline on the first run and report regressions; never gates a slice. The owner reads a sample of drafts before demos. Revisit with a stronger judge model once live access exists.

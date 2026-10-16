@@ -127,6 +127,7 @@ CalendarProvider
   create_event(event)                 -> EventRef    # online meeting if live
   update_event(event_key, changes)    -> EventRef    # reschedule / add attendee
   find_event(event_key)               -> Event | None
+  find_events(users, attendee_addresses, start, end) -> [Event]   # events with attendees and event key; used to locate an existing meeting for a reschedule
 
 ChatModelProvider
   complete(messages, output_schema)   -> validated structured result
@@ -188,7 +189,7 @@ Configuration selects the implementation per provider. Optional: health-check fa
 - `FR-SCH-6` Compute the overlap in code. Cap open-ended customer windows by internal working hours. Rank results and return at most 3 suggestions.
 - `FR-SCH-7` Outcomes, exactly one of: `recommend_slots`, `counter_propose` (no overlap), `request_clarification`, `update_existing_meeting`.
 - `FR-SCH-8` For `counter_propose`, draft a reply with 2 or 3 mutual slots in the customer's time zone, within the customer's stated preferences (for example mornings). Create no meeting.
-- `FR-SCH-9` For a reschedule request, find the existing meeting and update it (and add any new attendee). Never create a duplicate meeting.
+- `FR-SCH-9` For a reschedule request, locate the existing meeting using find_events: upcoming, non-cancelled events on the assigned attendees' calendars that include an external attendee address from the trigger email (falling back to the sender's domain). If exactly one matches, update it and add any new attendee. If several match, narrow by the original meeting day mentioned in the email. Otherwise draft a clarification request and create nothing. Never create a duplicate meeting.
 - `FR-SCH-10` A team member not assigned to the meeting must never block it.
 - `FR-SCH-11` Include a human-readable reason for every accepted and rejected slot in the scheduling request record.
 - `FR-SCH-12` A scheduling request has a state: pending, approved, rejected, superseded, cancelled, expired, or needs_review.
@@ -316,7 +317,7 @@ Traps: David's "Lunch" 11:30-12:30 is `showAs: free` and must not block. Raj is 
 ## 11. Local mode details
 
 - **Mail**: replay `.eml` files in date order against the simulated clock so the system behaves as if mail arrives one message at a time. Parse headers (Message-ID, In-Reply-To, References, Date with offset, From/To/Cc), multipart bodies, and attachments.
-- **Calendar**: read the mock calendar JSON (Graph event shape; `showAs` values `free|tentative|busy|oof|workingElsewhere`). Persist meetings created by the system so later availability checks see them.
+- **Calendar**: read the mock calendar JSON (Graph event shape; `showAs` values `free|tentative|busy|oof|workingElsewhere`). Persist meetings created by the system so later availability checks see them. Graph-like event shape (attendees as plain address strings; no isCancelled, so a missing value means not cancelled)
 - **Model (Ollama)**: small local models are weaker at structured output. Validate every output against a schema and retry on malformed output. Keep scheduling logic in code (`R4`). Record stage-classification accuracy against the answer key so the user can judge whether the local model is good enough. Model choice is open decision D5.
 - **CRM store**: SQLite behind `CrmRepository`.
 - **Simulated values**: mark simulated join links and similar values explicitly (`R10`).
