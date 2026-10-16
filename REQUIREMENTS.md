@@ -382,15 +382,16 @@ All tests live in a dedicated `tests/` folder.
 
 ## 15. Open decisions (ask the user before coding)
 
-| ID  | Decision                                | Options                                                                      | Status / default                                                  |
-| --- | --------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------- | --- | --- | -------------------------- | -------------------------------- | ----------------------- |
-| D1  | Backend language and framework          | Python, .NET (Microsoft Agent Framework supports more than one language)     | Ask. Python is a reasonable default for Ollama and fast iteration |
-| D2  | Frontend framework                      | React, others                                                                | React                                                             |
-| D3  | Live CRM store                          | Azure SQL, Dataverse, other                                                  | SQLite locally; defer live choice behind `CrmRepository`          |
-| D4  | Coding agent / instruction files        | Claude Code (`CLAUDE.md`), others                                            | Claude Code                                                       |
-| D5  | Local Ollama model                      | RESOLVED: llama3.1:8b on MacBook Air M4, 16 GB RAM (see inputs/decisions.md) | Compare qwen3:8b against it using TR-8                            |     | D6  | Teams Copilot agent timing | First release or after dashboard | After the web dashboard |
-| D7  | Exact Graph permission set and approver | To be agreed with IT                                                         | Document needs; do not assume                                     |
-| D8  | Live hosting target                     | Not chosen                                                                   | Out of Phase 1                                                    |
+| ID  | Decision                                | Options                                                                  | Status                                                                                                    |
+| --- | --------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| D1  | Backend language and framework          | Python, .NET (Microsoft Agent Framework supports more than one language) | RESOLVED: Python                                                                                          |
+| D2  | Frontend framework                      | React, others                                                            | RESOLVED: React (Vite + TypeScript)                                                                       |
+| D3  | Live CRM store                          | Azure SQL, Dataverse, other                                              | RESOLVED for Phase 1: SQLite locally. Live store deferred behind CrmRepository                            |
+| D4  | Coding agent and instruction files      | Claude Code (CLAUDE.md), others                                          | RESOLVED: Claude Code                                                                                     |
+| D5  | Local Ollama model                      | Depends on machine RAM and GPU                                           | RESOLVED: llama3.1:8b on MacBook Air M4, 16 GB RAM (see inputs/decisions.md). Compare qwen3:8b using TR-8 |
+| D6  | Teams Copilot agent timing              | First release or after dashboard                                         | RESOLVED: after the web dashboard                                                                         |
+| D7  | Exact Graph permission set and approver | To be agreed with IT                                                     | DEFERRED: agree with IT later. Document needs, do not assume                                              |
+| D8  | Live hosting target                     | Not chosen                                                               | DEFERRED: out of Phase 1                                                                                  |
 
 ---
 
